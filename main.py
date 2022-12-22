@@ -20,6 +20,7 @@ NUMBERS=["img/0.png", "img/1.png", "img/2.png", "img/3.png", "img/4.png", "img/5
 class Board():
     def __init__(self):
         self.board=[]
+        self.b
 
         # Creation and filling of the main board with 0
         for i in range(HEIGHT):
@@ -45,28 +46,13 @@ class Board():
                     for dy in range(-1, 2):
                         for dx in range(-1, 2):
                             toCheck.append([y+dy, x+dx])
-
                     # check bomb presence in each position around actual pos
                     bombs=0
                     for coords in toCheck:
                         if 0<=coords[1]<WIDTH and 0<=coords[0]<HEIGHT:
                             if self.board[coords[0]][coords[1]]=="x":
                                 bombs+=1
-
                     self.board[y][x]=bombs
-                      
-                      
-    def showRevealed(self):
-        imgList=[]
-        for y in range(HEIGHT):
-            for x in range(WIDTH):
-                if self.board[y][x]=="x":
-                    imgList.append(ImageTk.PhotoImage(Image.open("img/bomb.png").resize((SQUARE_SIZE, SQUARE_SIZE))))
-                else:
-                    imgList.append(ImageTk.PhotoImage(Image.open(NUMBERS[self.board[y][x]]).resize((SQUARE_SIZE, SQUARE_SIZE))))
-                
-                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=imgList[-1])
-        print(imgList)
 
     def __str__(self) -> str:
         r=""
@@ -101,8 +87,6 @@ window.geometry(f"{windowWidth}x{windowHeight}+{x}+{y}")
 
 b = Board()
 
-
-
 imgList=[]
 for y in range(HEIGHT):
     for x in range(WIDTH):
@@ -112,8 +96,5 @@ for y in range(HEIGHT):
             imgList.append(ImageTk.PhotoImage(Image.open(NUMBERS[b.board[y][x]]).resize((SQUARE_SIZE, SQUARE_SIZE))))
 
         canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=imgList[-1])
-print(imgList)
-
-
 
 window.mainloop()
