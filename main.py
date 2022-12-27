@@ -9,24 +9,26 @@ import random
 
 # CONSTANTS
 BACKGROUND_COLOR = "#E0E0E0"
-MINE_AMOUNT=100
+MINE_AMOUNT=150
 HEIGHT=30
 WIDTH=30
-SQUARE_SIZE=20
+SQUARE_SIZE=25
 BORDER_SIZE=10
 NUMBERS=["img/0.png", "img/1.png", "img/2.png", "img/3.png", "img/4.png", "img/5.png", "img/6.png", "img/7.png", "img/8.png"]
-
 
 class Board():
     def __init__(self):
         self.board=[]
-        self.b
+        self.rboard=[]
 
-        # Creation and filling of the main board with 0
+        # Creation and filling of the main and real board with 0
         for i in range(HEIGHT):
             self.board.append([])
+            self.rboard.append([])
             for j in range(WIDTH):
                 self.board[i].append(0)
+                self.rboard[i].append(0)
+
 
         # random placement of bombs
         for i in range(MINE_AMOUNT):
@@ -62,6 +64,10 @@ class Board():
             r+="\n"
         return r
 
+def onMouseDown(e):
+    print(e.x, e.y)
+
+
 
 window = Tk()
 window.title("MineSweeper")
@@ -85,16 +91,35 @@ y = int((screenHeight/2) - (windowHeight/2))
 
 window.geometry(f"{windowWidth}x{windowHeight}+{x}+{y}")
 
+
 b = Board()
 
+# keybinds
+window.bind('<Button-1>', onMouseDown)
+
+
+#affichage du plateau
+overImage=ImageTk.PhotoImage(Image.open("img/over.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
 imgList=[]
+canvas.delete("all")
+
 for y in range(HEIGHT):
     for x in range(WIDTH):
-        if b.board[y][x]=="x":
-            imgList.append(ImageTk.PhotoImage(Image.open("img/bomb.png").resize((SQUARE_SIZE, SQUARE_SIZE))))
+        if b.rboard[y][x]==1:
+            if b.board[y][x]=="x":
+                imgList.append(ImageTk.PhotoImage(Image.open("img/bomb.png").resize((SQUARE_SIZE, SQUARE_SIZE))))
+                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=imgList[-1])
+            else:
+                imgList.append(ImageTk.PhotoImage(Image.open(NUMBERS[b.board[y][x]]).resize((SQUARE_SIZE, SQUARE_SIZE))))
+                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=imgList[-1])
+        elif b.rboard[y][x]==0:
+            imgList.append(ImageTk.PhotoImage(Image.open("img/hidden.png").resize((SQUARE_SIZE, SQUARE_SIZE))))
+            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=imgList[-1], activeimage=overImage)
         else:
-            imgList.append(ImageTk.PhotoImage(Image.open(NUMBERS[b.board[y][x]]).resize((SQUARE_SIZE, SQUARE_SIZE))))
-
-        canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=imgList[-1])
+            imgList.append(ImageTk.PhotoImage(Image.open("img/flag.png").resize((SQUARE_SIZE, SQUARE_SIZE))))
+            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=imgList[-1])
+    
 
 window.mainloop()
+
+
