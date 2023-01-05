@@ -6,15 +6,16 @@
 from tkinter import *
 from PIL import Image, ImageTk
 import random
+import pattern #pattern.py file of this projets, used to store all patterns and their unique solution
 
 # CONSTANTS
 BACKGROUND_COLOR = "#E0E0E0"
 WIN_COLOR = "#00FF00"
 LOOSE_COLOR = "#FF0000"
-MINE_AMOUNT=15
-HEIGHT=10
-WIDTH=10
-SQUARE_SIZE=20
+MINE_AMOUNT=100
+HEIGHT=20
+WIDTH=20
+SQUARE_SIZE=5
 BORDER_SIZE=10
 
 # main board class
@@ -213,8 +214,17 @@ def discoverFirstCase():
         for col in range(WIDTH):
             if b.board[row][col]==0:
                 zeroCase.append([row, col])
-    nb=random.randint(0, len(zeroCase)-1)
-    canvas.event_generate('<Button-1>', x=zeroCase[nb][1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=zeroCase[nb][0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+    if len(zeroCase)!=0:
+        rd=random.choice(zeroCase)
+        canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+    else:
+        unknownList=[]
+        for row in range(HEIGHT-1):
+            for col in range(WIDTH-1):
+                if aiBoard[row][col]=="*":
+                    unknownList.append([row, col])
+        rd=random.choice(unknownList)
+        canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
 
 # WINDOW AND TKINTER SECTION
 window = Tk()
@@ -298,10 +308,12 @@ aiBoard=[]
 # fill the aiBoard with 0
 # so we can update it when in the next function
 def initAIBoard():
+    global aiBoard
+    aiBoard=[]
     for i in range(HEIGHT):
-            aiBoard.append([])
-            for j in range(WIDTH):
-                aiBoard[i].append(0)
+        aiBoard.append([])
+        for j in range(WIDTH):
+            aiBoard[i].append(0)
 
 # update the ai board using the sup and main board
 # in simple terms, it only contain what a real player can see from the game
@@ -318,10 +330,11 @@ def updateAIBoard():
 
 # print the aiBoard in cli, used for debug, i leave it here
 def printAIBoard():
-    for y in range(len(aiBoard)):
-        for x in range (len(aiBoard[y])):
-            print(aiBoard[y][x], end="")
-        print()
+    for row in aiBoard:
+        for col in row:
+            print(col, end="")
+        print("")
+    print("")
 
 # do the first random click on the board
 # then start the ai function
@@ -432,12 +445,24 @@ def ai():
     # if the first part does not provide any single action to do, this part is the only way to continue the game
     # it will try to find patterns in the board that allow us to continue by taking into account groups of cases
     if not done:
-        pass
+        patternRecognition=pattern.patternFinder(aiBoard)
+        if patternRecognition!=None:
+            print("pattern trouvé : ", patternRecognition)
+            for coords in patternRecognition:
+                flagCase(coords[0], coords[1])
+        else:
+            unknownList=[]
+            for row in range(HEIGHT-1):
+                for col in range(WIDTH-1):
+                    if aiBoard[row][col]=="*":
+                        unknownList.append([row, col])
+            rd=random.choice(unknownList)
+            canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+            
 
     # If ai fail, reset here to gain time on the loops
     # otherwise, we need to wait for the next click, so the ai need to fill caseToCheck and a lot of other things
     if b.finished:
-        window.after(AISPEED, wait)
         reset()
         startAI()
     else:
