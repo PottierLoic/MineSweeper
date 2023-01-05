@@ -11,13 +11,11 @@ import random
 BACKGROUND_COLOR = "#E0E0E0"
 WIN_COLOR = "#00FF00"
 LOOSE_COLOR = "#FF0000"
-MINE_AMOUNT=10
-HEIGHT=10
-WIDTH=10
+MINE_AMOUNT=50
+HEIGHT=20
+WIDTH=20
 SQUARE_SIZE=20
 BORDER_SIZE=10
-NUMBERS=["img/0.png", "img/1.png", "img/2.png", "img/3.png", "img/4.png", "img/5.png", "img/6.png", "img/7.png", "img/8.png"]
-
 
 # main board class
 # does no contain tkinter parts
@@ -165,20 +163,28 @@ def graphics():
                 canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=hiddenImage, activeimage=overImage, tag="case")
             else:
                 canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=flagImage, tag="case")
-    
 
 # Destroy every graphics elements and add a loose text in canvas
 def loose():
+    global defeat, defeatText
     b.finished=True
     canvas.config(bg=LOOSE_COLOR)
     label.config(text="RATIOOO")
+    defeat +=1
+    defeatText="Defeat : "+str(defeat)
+    defeatLabel.config(text=defeatText)
 
 # Destroy every graphics elements and add a win text in canvas
 def win():
+    global victory, victoryText
     b.finished=True
     canvas.config(bg=WIN_COLOR)
     label.config(text="WINNNN")
+    victory +=1
+    victoryText="Victory : "+str(victory)
+    victoryLabel.config(text=victoryText)
 
+# reset the board by recreating a new Board object
 def reset():
     global b
     b=Board()
@@ -186,12 +192,37 @@ def reset():
     label.config(text="MineSweeper")
     graphics()
 
+# function used of the first click on the board, as in the original game, we can't loose on the first click
+# this function looks for all the 0 in the board, select one randomly and click on it so we don't die 
+def discoverFirstCase():
+    zeroCase=[]
+    for row in range(len(b.board)-1):
+        for col in range(len(b.board[0])-1):
+            if b.board[row][col]==0:
+                zeroCase.append([row, col])
+    nb=random.randint(0, len(zeroCase)-1)
+    canvas.event_generate('<Button-1>', x=zeroCase[nb][1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=zeroCase[nb][0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+
+# WINDOW AND TKINTER SECTION
+
+
 window = Tk()
 window.title("MineSweeper")
 window.resizable(False, False)
 
 label = Label(window, text="MineSweeper", font=("consolas", 40))
 label.pack()
+
+victory=0
+defeat=0
+
+victoryText="Victory : "+str(victory)
+victoryLabel = Label(window, text=victoryText, font=("consolas", 10))
+victoryLabel.pack()
+
+defeatText="Defeats : "+str(defeat)
+defeatLabel = Label(window, text=defeatText, font=("consolas", 10))
+defeatLabel.pack()
 
 canvas = Canvas(window, bg=BACKGROUND_COLOR, height=HEIGHT*SQUARE_SIZE+BORDER_SIZE*2, width=WIDTH*SQUARE_SIZE+BORDER_SIZE*2)
 canvas.pack()
@@ -234,9 +265,18 @@ flagImage=ImageTk.PhotoImage(Image.open("img/flag.png").resize((SQUARE_SIZE, SQU
 #affichage du plateau
 graphics()
 
-# IA PART
 
-AISPEED=100
+#------------------------------------------------------------------------
+# IA PART
+#------------------------------------------------------------------------
+
+# set this to false to desactivate AI part and play yourself
+AI_ON = True 
+
+# Minimum possible value looks to be 4, maybe 1 on a good pc
+# the lower the speed is, the faster the ia is, it represent the time waited between every action, so the tkinter interface can follow
+AISPEED=4
+
 aiBoard=[]
 
 def initAIBoard():
@@ -264,58 +304,114 @@ def printAIBoard():
 # do the first random click on the board
 # then start the ai function
 def startAI():
-    initAIBoard()
-    updateAIBoard()
-    x=random.randint(0, WIDTH-1)
-    y=random.randint(0, HEIGHT-1)
+    if AI_ON:
+        initAIBoard()
+        updateAIBoard()
+        discoverFirstCase()
 
-    canvas.event_generate('<Button-1>', x=x*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=y*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+        window.after(AISPEED, ai)
 
-    window.after(AISPEED, ai)
+# empty call to wait in the ai
+def wait():
+    pass
+
+# right click on the case specified in parameters --> put a flag
+def flagCase(posx, posy):
+    canvas.event_generate('<Button-3>', x=posx*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=posy*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+
+# left click on the case specified in parameters --> discover the case
+def clickCase(posx, posy):
+    canvas.event_generate('<Button-1>', x=posx*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=posy*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
 
 # main ai
-def ai():  
+def ai():
     updateAIBoard()
     #put all the cases filled with number other than 0 in a list
     caseToCheck=[]
     for y in range(len(aiBoard)):
         for x in range (len(aiBoard[y])):
-            if aiBoard[y][x] not in ("*", 0):
-                caseToCheck.append((y, x))
+            if aiBoard[y][x] not in ("*", 0, "~", "*"):
+                valid=False
+                for dy in range(-1, 2):
+                    for dx in range(-1, 2):
+                        if 0<=y+dy<HEIGHT and 0<=x+dx<WIDTH:
+                            if aiBoard[y+dy][x+dx]=="*":
+                                valid=True
+                if valid:
+                    caseToCheck.append((y, x))
 
-    #check around cases in caseToCheck if :
-    # first : there is a number of unknown cases around equal to the number of the case - number of flags around already placed
-    #   if yes, add the unknown cases to the list of cases to flag
-    # second : there is a number of flagged cases around equal to the number of the case
-    #   if yes, add the unknown cases remaining around to the list of cases to click
-    caseToClick=[]
-    caseToFlag=[]
-    for case in caseToCheck:
-        localToCheck=[]
-        for dy in range(-1, 2):
-            for dx in range(-1, 2):
-                localToCheck.append([case[0]+dy, case[1]+dx])
-        unknown=0
-        flagged=0
-        for coords in localToCheck:
-            if 0<=coords[1]<HEIGHT and 0<=coords[0]<WIDTH:
-                if aiBoard[coords[0]][coords[1]]=="*":
-                    unknown+=1
-                elif aiBoard[coords[0]][coords[1]]=="~":
-                    flagged+=1
-        
-    
-    print(caseToClick)
-    print(caseToFlag)
-    for case in caseToClick:
-        canvas.event_generate('<Button-1>', x=case[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=case[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
-    for case in caseToFlag:
-        canvas.event_generate('<Button-3>', x=case[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=case[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
-    print("dzadazd")
-    window.after(AISPEED, ai)
+    # if the first click is on a number, we need to click on another random case
+    # to avoid a random click when we only have one unknown case left, we need to count unknown cases
+    totalUnknown=0
+    for row in aiBoard:
+        for col in row:
+            if col=="*":
+                totalUnknown+=1
 
+    if len(caseToCheck)==1 and totalUnknown!=1:
+        x=random.randint(0, WIDTH-1)
+        y=random.randint(0, HEIGHT-1)
+        canvas.event_generate('<Button-1>', x=x*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=y*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+    else:
+        #check around cases in caseToCheck if :
+        # first : there is a number of unknown cases around equal to the number of the case - number of flags around already placed
+        #   if yes, call the flagCase function for theses coords
+        # second : there is a number of flagged cases around equal to the number of the case
+        #   if yes, call the clickCase function for theses coords
+        done=False
+        for case in caseToCheck:
+            if not done:  
+                localToCheck=[]
+
+                # For each case, we need to get the coords of all the cases around
+                for dy in range(-1, 2):
+                    for dx in range(-1, 2):
+                        localToCheck.append([case[0]+dy, case[1]+dx])
+                unknown=0
+                unknownList=[]
+                flagged=0
+                # we get the number of flagged and unknown cases in the precedent list
+                for coords in localToCheck:
+                    if 0<=coords[1]<HEIGHT and 0<=coords[0]<WIDTH:
+                        if aiBoard[coords[0]][coords[1]]=="*":
+                            unknown+=1
+                            unknownList.append([coords[0], coords[1]])
+                        elif aiBoard[coords[0]][coords[1]]=="~":
+                            flagged+=1
+
+                # if the number of unknown cases around is equal to the number on the actual case - flags around
+                # we can juste flag every unknown case because there is 0% chance for them to be a bomb
+                if type(aiBoard[case[0]][case[1]])==int:
+                    if unknown==aiBoard[case[0]][case[1]]-flagged:
+                        for unknownCase in unknownList:
+                            if b.finished:
+                                break
+                            flagCase(unknownCase[1], unknownCase[0])
+                            window.after(AISPEED, wait)
+                        done=True
+                # if the number of flagged cases around is equal to the number on the actual case
+                # it means that all the bombs are found, so we can click on every unknown case
+                if flagged==aiBoard[case[0]][case[1]]:
+                    for unknownCase in unknownList:
+                        if b.finished:
+                            break
+                        clickCase(unknownCase[1], unknownCase[0])
+                        window.after(AISPEED, wait)
+                    done=True
+
+                #if ai fail, no need to continue
+                if b.finished:
+                    break
+
+    # If ai fail, reset here to gain time on the loops
+    # otherwise, we need to wait for the next click, so the ai need to fill caseToCheck and a lot of other things
+    if b.finished:
+        window.after(5000, wait)
+        reset()
+        startAI()
+    else:
+        window.after(AISPEED, ai)
+   
 startAI()
 
 window.mainloop()
-
-
