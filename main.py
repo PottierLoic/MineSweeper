@@ -11,9 +11,9 @@ import random
 BACKGROUND_COLOR = "#E0E0E0"
 WIN_COLOR = "#00FF00"
 LOOSE_COLOR = "#FF0000"
-MINE_AMOUNT=50
-HEIGHT=20
-WIDTH=20
+MINE_AMOUNT=15
+HEIGHT=10
+WIDTH=10
 SQUARE_SIZE=20
 BORDER_SIZE=10
 
@@ -110,7 +110,7 @@ class Board():
 # called by tk when the left click is used
 # it change the case to either discovered if it was unknown
 # or to unknown if it was flagged
-def button1(e):
+def leftClick(e):
     x, y = e.x-BORDER_SIZE, e.y-BORDER_SIZE
     posx=x//SQUARE_SIZE
     posy=y//SQUARE_SIZE
@@ -131,7 +131,7 @@ def button1(e):
 # called by tk when the right click is used
 # it change the case to either flagged if it was unknown
 # or to unknown if it was flagged
-def button2(e):
+def rightClick(e):
     x, y = e.x-BORDER_SIZE, e.y-BORDER_SIZE
     posx=x//SQUARE_SIZE
     posy=y//SQUARE_SIZE
@@ -149,7 +149,18 @@ def button2(e):
     else:
         reset()
 
-# clear the main canvas and recreate all the graphics with the latest values
+# count the number of mine that we found (number of flags placed) 
+# and sbstract them to the MINE_AMOUNT constant, then update the number display
+def updateMineNumber():
+    nb=0
+    for row in b.supBoard:
+        for col in row:
+            if col==2:
+                nb+=1
+    minesText="Remaining bombs : "+str(MINE_AMOUNT-nb)
+    minesLabel.config(text=minesText)
+
+# clear the main canvas and recreate all the graphics with the actual values
 def graphics():
     canvas.delete("all")
     for y in range(HEIGHT):
@@ -158,11 +169,12 @@ def graphics():
                 if b.board[y][x]=="x":
                     canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=bombImage, tag="case")
                 else:
-                    canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=NUMBERSTEST[b.board[y][x]], tag="case")
+                    canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=NUMBERS[b.board[y][x]], tag="case")
             elif b.supBoard[y][x]==0:
                 canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=hiddenImage, activeimage=overImage, tag="case")
             else:
                 canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=flagImage, tag="case")
+    updateMineNumber()
 
 # Destroy every graphics elements and add a loose text in canvas
 def loose():
@@ -184,7 +196,8 @@ def win():
     victoryText="Victory : "+str(victory)
     victoryLabel.config(text=victoryText)
 
-# reset the board by recreating a new Board object
+# reset the board by recreating a new Board object 
+# and reverse the changes made by the win/loose function 
 def reset():
     global b
     b=Board()
@@ -192,20 +205,18 @@ def reset():
     label.config(text="MineSweeper")
     graphics()
 
-# function used of the first click on the board, as in the original game, we can't loose on the first click
+# function used for the first click on the board, as in the original game, we can't loose on the first click
 # this function looks for all the 0 in the board, select one randomly and click on it so we don't die 
 def discoverFirstCase():
     zeroCase=[]
-    for row in range(len(b.board)-1):
-        for col in range(len(b.board[0])-1):
+    for row in range(HEIGHT):
+        for col in range(WIDTH):
             if b.board[row][col]==0:
                 zeroCase.append([row, col])
     nb=random.randint(0, len(zeroCase)-1)
     canvas.event_generate('<Button-1>', x=zeroCase[nb][1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=zeroCase[nb][0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
 
 # WINDOW AND TKINTER SECTION
-
-
 window = Tk()
 window.title("MineSweeper")
 window.resizable(False, False)
@@ -224,6 +235,11 @@ defeatText="Defeats : "+str(defeat)
 defeatLabel = Label(window, text=defeatText, font=("consolas", 10))
 defeatLabel.pack()
 
+remainingMines=MINE_AMOUNT
+minesText="Remaining bombs : "+str(remainingMines)
+minesLabel = Label(window, text=minesText, font=("consolas", 10))
+minesLabel.pack()
+
 canvas = Canvas(window, bg=BACKGROUND_COLOR, height=HEIGHT*SQUARE_SIZE+BORDER_SIZE*2, width=WIDTH*SQUARE_SIZE+BORDER_SIZE*2)
 canvas.pack()
 
@@ -241,13 +257,13 @@ window.geometry(f"{windowWidth}x{windowHeight}+{x}+{y}")
 
 b = Board()
 
-# keybinds
-window.bind('<Button-1>', button1)
-window.bind('<Button-3>', button2)
+# KEYBINDS (if you want to play without ai)
+window.bind('<Button-1>', leftClick)
+window.bind('<Button-3>', rightClick)
 
 # Creation of the images, need to put this after the main window declaration
 # because of the window.update() call otherwise the images are not loaded correctly
-NUMBERSTEST=[ImageTk.PhotoImage(Image.open("img/0.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+NUMBERS=[ImageTk.PhotoImage(Image.open("img/0.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
              ImageTk.PhotoImage(Image.open("img/1.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
              ImageTk.PhotoImage(Image.open("img/2.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
              ImageTk.PhotoImage(Image.open("img/3.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
@@ -265,26 +281,31 @@ flagImage=ImageTk.PhotoImage(Image.open("img/flag.png").resize((SQUARE_SIZE, SQU
 #affichage du plateau
 graphics()
 
-
 #------------------------------------------------------------------------
 # IA PART
 #------------------------------------------------------------------------
 
 # set this to false to desactivate AI part and play yourself
-AI_ON = True 
+AI_ON = True
 
 # Minimum possible value looks to be 4, maybe 1 on a good pc
 # the lower the speed is, the faster the ia is, it represent the time waited between every action, so the tkinter interface can follow
 AISPEED=4
 
+# creating the board that the ai will analyze
 aiBoard=[]
 
+# fill the aiBoard with 0
+# so we can update it when in the next function
 def initAIBoard():
     for i in range(HEIGHT):
             aiBoard.append([])
             for j in range(WIDTH):
                 aiBoard[i].append(0)
 
+# update the ai board using the sup and main board
+# in simple terms, it only contain what a real player can see from the game
+# every case that is not discovered on the suppBoard will contain "*"
 def updateAIBoard():
     for y in range(len(b.board)):
         for x in range (len(b.board[y])):
@@ -295,6 +316,7 @@ def updateAIBoard():
             else:
                 aiBoard[y][x]="*"
 
+# print the aiBoard in cli, used for debug, i leave it here
 def printAIBoard():
     for y in range(len(aiBoard)):
         for x in range (len(aiBoard[y])):
@@ -303,6 +325,8 @@ def printAIBoard():
 
 # do the first random click on the board
 # then start the ai function
+# this click can only be done on an empty case
+# see the discoverFirstCase function comment for more info
 def startAI():
     if AI_ON:
         initAIBoard()
@@ -311,7 +335,8 @@ def startAI():
 
         window.after(AISPEED, ai)
 
-# empty call to wait in the ai
+# empty function that we call in the window.after line
+# it does nothing but apparently we need a function to be able to wait
 def wait():
     pass
 
@@ -326,6 +351,11 @@ def clickCase(posx, posy):
 # main ai
 def ai():
     updateAIBoard()
+
+    # FIRST PART OF THE AI
+    # this part will try to solve the actual state by checking one case at a time
+    # it will no take into account the others numbers around it
+
     #put all the cases filled with number other than 0 in a list
     caseToCheck=[]
     for y in range(len(aiBoard)):
@@ -348,65 +378,66 @@ def ai():
             if col=="*":
                 totalUnknown+=1
 
-    if len(caseToCheck)==1 and totalUnknown!=1:
-        x=random.randint(0, WIDTH-1)
-        y=random.randint(0, HEIGHT-1)
-        canvas.event_generate('<Button-1>', x=x*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=y*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
-    else:
-        #check around cases in caseToCheck if :
-        # first : there is a number of unknown cases around equal to the number of the case - number of flags around already placed
-        #   if yes, call the flagCase function for theses coords
-        # second : there is a number of flagged cases around equal to the number of the case
-        #   if yes, call the clickCase function for theses coords
-        done=False
-        for case in caseToCheck:
-            if not done:  
-                localToCheck=[]
+    #check around cases in caseToCheck if :
+    # first : there is a number of unknown cases around equal to the number of the case - number of flags around already placed
+    #   if yes, call the flagCase function for theses coords
+    # second : there is a number of flagged cases around equal to the number of the case
+    #   if yes, call the clickCase function for theses coords
+    done=False
+    for case in caseToCheck:
+        if not done:  
+            localToCheck=[]
 
-                # For each case, we need to get the coords of all the cases around
-                for dy in range(-1, 2):
-                    for dx in range(-1, 2):
-                        localToCheck.append([case[0]+dy, case[1]+dx])
-                unknown=0
-                unknownList=[]
-                flagged=0
-                # we get the number of flagged and unknown cases in the precedent list
-                for coords in localToCheck:
-                    if 0<=coords[1]<HEIGHT and 0<=coords[0]<WIDTH:
-                        if aiBoard[coords[0]][coords[1]]=="*":
-                            unknown+=1
-                            unknownList.append([coords[0], coords[1]])
-                        elif aiBoard[coords[0]][coords[1]]=="~":
-                            flagged+=1
+            # For each case, we need to get the coords of all the cases around
+            for dy in range(-1, 2):
+                for dx in range(-1, 2):
+                    localToCheck.append([case[0]+dy, case[1]+dx])
+            unknown=0
+            unknownList=[]
+            flagged=0
+            # we get the number of flagged and unknown cases in the precedent list
+            for coords in localToCheck:
+                if 0<=coords[1]<HEIGHT and 0<=coords[0]<WIDTH:
+                    if aiBoard[coords[0]][coords[1]]=="*":
+                        unknown+=1
+                        unknownList.append([coords[0], coords[1]])
+                    elif aiBoard[coords[0]][coords[1]]=="~":
+                        flagged+=1
 
-                # if the number of unknown cases around is equal to the number on the actual case - flags around
-                # we can juste flag every unknown case because there is 0% chance for them to be a bomb
-                if type(aiBoard[case[0]][case[1]])==int:
-                    if unknown==aiBoard[case[0]][case[1]]-flagged:
-                        for unknownCase in unknownList:
-                            if b.finished:
-                                break
-                            flagCase(unknownCase[1], unknownCase[0])
-                            window.after(AISPEED, wait)
-                        done=True
-                # if the number of flagged cases around is equal to the number on the actual case
-                # it means that all the bombs are found, so we can click on every unknown case
-                if flagged==aiBoard[case[0]][case[1]]:
+            # if the number of unknown cases around is equal to the number on the actual case - flags around
+            # we can juste flag every unknown case because there is 0% chance for them to be a bomb
+            if type(aiBoard[case[0]][case[1]])==int:
+                if unknown==aiBoard[case[0]][case[1]]-flagged:
                     for unknownCase in unknownList:
                         if b.finished:
                             break
-                        clickCase(unknownCase[1], unknownCase[0])
+                        flagCase(unknownCase[1], unknownCase[0])
                         window.after(AISPEED, wait)
                     done=True
+            # if the number of flagged cases around is equal to the number on the actual case
+            # it means that all the bombs are found, so we can click on every unknown case
+            if flagged==aiBoard[case[0]][case[1]]:
+                for unknownCase in unknownList:
+                    if b.finished:
+                        break
+                    clickCase(unknownCase[1], unknownCase[0])
+                    window.after(AISPEED, wait)
+                done=True
 
-                #if ai fail, no need to continue
-                if b.finished:
-                    break
+            #if ai fail, no need to continue
+            if b.finished:
+                break
+
+    # SECOND PART OF THE AI
+    # if the first part does not provide any single action to do, this part is the only way to continue the game
+    # it will try to find patterns in the board that allow us to continue by taking into account groups of cases
+    if not done:
+        pass
 
     # If ai fail, reset here to gain time on the loops
     # otherwise, we need to wait for the next click, so the ai need to fill caseToCheck and a lot of other things
     if b.finished:
-        window.after(5000, wait)
+        window.after(AISPEED, wait)
         reset()
         startAI()
     else:
