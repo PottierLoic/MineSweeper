@@ -12,10 +12,10 @@ import pattern #pattern.py file of this projets, used to store all patterns and 
 BACKGROUND_COLOR = "#E0E0E0"
 WIN_COLOR = "#00FF00"
 LOOSE_COLOR = "#FF0000"
-MINE_AMOUNT=100
+MINE_AMOUNT=70
 HEIGHT=20
 WIDTH=20
-SQUARE_SIZE=5
+SQUARE_SIZE=30
 BORDER_SIZE=10
 
 # main board class
@@ -300,7 +300,7 @@ AI_ON = True
 
 # Minimum possible value looks to be 4, maybe 1 on a good pc
 # the lower the speed is, the faster the ia is, it represent the time waited between every action, so the tkinter interface can follow
-AISPEED=4
+AISPEED=1
 
 # creating the board that the ai will analyze
 aiBoard=[]
@@ -364,6 +364,7 @@ def clickCase(posx, posy):
 # main ai
 def ai():
     updateAIBoard()
+    lastAction=[]
 
     # FIRST PART OF THE AI
     # this part will try to solve the actual state by checking one case at a time
@@ -425,7 +426,6 @@ def ai():
                         if b.finished:
                             break
                         flagCase(unknownCase[1], unknownCase[0])
-                        window.after(AISPEED, wait)
                     done=True
             # if the number of flagged cases around is equal to the number on the actual case
             # it means that all the bombs are found, so we can click on every unknown case
@@ -434,7 +434,6 @@ def ai():
                     if b.finished:
                         break
                     clickCase(unknownCase[1], unknownCase[0])
-                    window.after(AISPEED, wait)
                 done=True
 
             #if ai fail, no need to continue
@@ -447,22 +446,34 @@ def ai():
     if not done:
         patternRecognition=pattern.patternFinder(aiBoard)
         if patternRecognition!=None:
-            print("pattern trouvé : ", patternRecognition)
-            for coords in patternRecognition:
-                flagCase(coords[0], coords[1])
+            if patternRecognition[0]=="safe":
+                for coords in patternRecognition[1]:
+                    clickCase(coords[1], coords[0])
+                    lastAction="pattern : clicked on : "+str(coords[1])+", "+str(coords[0])
+                    if b.finished:
+                        print("raté a cause du pattern")
+            else:
+                for coords in patternRecognition[1]:
+                    flagCase(coords[1], coords[0])
+                    lastAction="patter : flagged on : "+str(coords[1])+", "+str(coords[0])
+                    if b.finished:
+                        print("raté a cause du pattern")
         else:
             unknownList=[]
-            for row in range(HEIGHT-1):
-                for col in range(WIDTH-1):
+            for row in range(HEIGHT):
+                for col in range(WIDTH):
                     if aiBoard[row][col]=="*":
                         unknownList.append([row, col])
-            rd=random.choice(unknownList)
-            canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+            if len(unknownList)!=0:
+                rd=random.choice(unknownList)
+                canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+                lastAction="rng : clicked on : "+str(rd[1])+", "+str(rd[0])
             
-
     # If ai fail, reset here to gain time on the loops
     # otherwise, we need to wait for the next click, so the ai need to fill caseToCheck and a lot of other things
     if b.finished:
+        if lastAction!=[]:
+            print(lastAction)
         reset()
         startAI()
     else:
