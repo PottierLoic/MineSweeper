@@ -11,9 +11,9 @@ import random
 BACKGROUND_COLOR = "#E0E0E0"
 WIN_COLOR = "#00FF00"
 LOOSE_COLOR = "#FF0000"
-MINE_AMOUNT=20
-HEIGHT=15
-WIDTH=15
+MINE_AMOUNT=10
+HEIGHT=10
+WIDTH=10
 SQUARE_SIZE=20
 BORDER_SIZE=10
 NUMBERS=["img/0.png", "img/1.png", "img/2.png", "img/3.png", "img/4.png", "img/5.png", "img/6.png", "img/7.png", "img/8.png"]
@@ -25,6 +25,7 @@ class Board():
     def __init__(self):
         self.board=[]
         self.supBoard=[]
+        self.finished=False
 
         # Creation and filling of the main and real board with 0
         for i in range(HEIGHT):
@@ -115,17 +116,19 @@ def button1(e):
     x, y = e.x-BORDER_SIZE, e.y-BORDER_SIZE
     posx=x//SQUARE_SIZE
     posy=y//SQUARE_SIZE
-    if b.supBoard[posy][posx]==0:
-        b.supBoard[posy][posx]=1
-    elif b.supBoard[posy][posx]==2:
-        b.supBoard[posy][posx]=0
-    b.discoveryExtend(posx, posy)
-    graphics()
-
-    if b.checkLoose():
-        loose()
-    elif b.checkWin():
-        win()
+    if not b.finished:
+        if b.supBoard[posy][posx]==0:
+            b.supBoard[posy][posx]=1
+        elif b.supBoard[posy][posx]==2:
+            b.supBoard[posy][posx]=0
+        b.discoveryExtend(posx, posy)
+        graphics()
+        if b.checkLoose():
+            loose()
+        elif b.checkWin():
+            win()
+    else:
+        reset()
     
 # called by tk when the right click is used
 # it change the case to either flagged if it was unknown
@@ -134,16 +137,19 @@ def button2(e):
     x, y = e.x-BORDER_SIZE, e.y-BORDER_SIZE
     posx=x//SQUARE_SIZE
     posy=y//SQUARE_SIZE
-    if b.supBoard[posy][posx]==0:
-        b.supBoard[posy][posx]=2
-    elif b.supBoard[posy][posx]==2:
-        b.supBoard[posy][posx]=0
-    graphics()
+    if not b.finished:
+        if b.supBoard[posy][posx]==0:
+            b.supBoard[posy][posx]=2
+        elif b.supBoard[posy][posx]==2:
+            b.supBoard[posy][posx]=0
+        graphics()
 
-    if b.checkLoose():
-        loose()
-    elif b.checkWin():
-        win()
+        if b.checkLoose():
+            loose()
+        elif b.checkWin():
+            win()
+    else:
+        reset()
 
 # clear the main canvas and recreate all the graphics with the latest values
 def graphics():
@@ -152,27 +158,33 @@ def graphics():
         for x in range(WIDTH):
             if b.supBoard[y][x]==1:
                 if b.board[y][x]=="x":
-                    imgList.append(ImageTk.PhotoImage(Image.open("img/bomb.png").resize((SQUARE_SIZE, SQUARE_SIZE))))
-                    canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=imgList[-1], tag="case")
+                    canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=bombImage, tag="case")
                 else:
-                    imgList.append(ImageTk.PhotoImage(Image.open(NUMBERS[b.board[y][x]]).resize((SQUARE_SIZE, SQUARE_SIZE))))
-                    canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=imgList[-1], tag="case")
+                    canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=NUMBERSTEST[b.board[y][x]], tag="case")
             elif b.supBoard[y][x]==0:
-                imgList.append(ImageTk.PhotoImage(Image.open("img/hidden.png").resize((SQUARE_SIZE, SQUARE_SIZE))))
-                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=imgList[-1], activeimage=overImage, tag="case")
+                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=hiddenImage, activeimage=overImage, tag="case")
             else:
-                imgList.append(ImageTk.PhotoImage(Image.open("img/flag.png").resize((SQUARE_SIZE, SQUARE_SIZE))))
-                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=imgList[-1], tag="case")
+                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=flagImage, tag="case")
+    
 
 # Destroy every graphics elements and add a loose text in canvas
 def loose():
+    b.finished=True
     canvas.config(bg=LOOSE_COLOR)
     label.config(text="RATIOOO")
 
 # Destroy every graphics elements and add a win text in canvas
 def win():
+    b.finished=True
     canvas.config(bg=WIN_COLOR)
     label.config(text="WINNNN")
+
+def reset():
+    global b
+    b=Board()
+    canvas.config(bg=BACKGROUND_COLOR)
+    label.config(text="MineSweeper")
+    graphics()
 
 window = Tk()
 window.title("MineSweeper")
@@ -198,18 +210,112 @@ window.geometry(f"{windowWidth}x{windowHeight}+{x}+{y}")
 
 b = Board()
 
-
 # keybinds
 window.bind('<Button-1>', button1)
 window.bind('<Button-3>', button2)
 
-#affichage du plateau
-overImage=ImageTk.PhotoImage(Image.open("img/over.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
-imgList=[]
-canvas.delete("all")
+# Creation of the images, need to put this after the main window declaration
+# because of the window.update() call otherwise the images are not loaded correctly
+NUMBERSTEST=[ImageTk.PhotoImage(Image.open("img/0.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+             ImageTk.PhotoImage(Image.open("img/1.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+             ImageTk.PhotoImage(Image.open("img/2.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+             ImageTk.PhotoImage(Image.open("img/3.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+             ImageTk.PhotoImage(Image.open("img/4.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+             ImageTk.PhotoImage(Image.open("img/5.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+             ImageTk.PhotoImage(Image.open("img/6.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+             ImageTk.PhotoImage(Image.open("img/7.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+             ImageTk.PhotoImage(Image.open("img/8.png").resize((SQUARE_SIZE, SQUARE_SIZE))),]
 
+overImage=ImageTk.PhotoImage(Image.open("img/over.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
+bombImage=ImageTk.PhotoImage(Image.open("img/bomb.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
+hiddenImage=ImageTk.PhotoImage(Image.open("img/hidden.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
+flagImage=ImageTk.PhotoImage(Image.open("img/flag.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
+
+#affichage du plateau
 graphics()
+
+# IA PART
+
+AISPEED=100
+aiBoard=[]
+
+def initAIBoard():
+    for i in range(HEIGHT):
+            aiBoard.append([])
+            for j in range(WIDTH):
+                aiBoard[i].append(0)
+
+def updateAIBoard():
+    for y in range(len(b.board)):
+        for x in range (len(b.board[y])):
+            if b.supBoard[y][x]==1:
+                aiBoard[y][x]=b.board[y][x] 
+            elif b.supBoard[y][x]==2:
+                aiBoard[y][x]="~"
+            else:
+                aiBoard[y][x]="*"
+
+def printAIBoard():
+    for y in range(len(aiBoard)):
+        for x in range (len(aiBoard[y])):
+            print(aiBoard[y][x], end="")
+        print()
+
+# do the first random click on the board
+# then start the ai function
+def startAI():
+    initAIBoard()
+    updateAIBoard()
+    x=random.randint(0, WIDTH-1)
+    y=random.randint(0, HEIGHT-1)
+
+    canvas.event_generate('<Button-1>', x=x*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=y*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+
+    window.after(AISPEED, ai)
+
+# main ai
+def ai():  
+    updateAIBoard()
+    #put all the cases filled with number other than 0 in a list
+    caseToCheck=[]
+    for y in range(len(aiBoard)):
+        for x in range (len(aiBoard[y])):
+            if aiBoard[y][x] not in ("*", 0):
+                caseToCheck.append((y, x))
+
+    #check around cases in caseToCheck if :
+    # first : there is a number of unknown cases around equal to the number of the case - number of flags around already placed
+    #   if yes, add the unknown cases to the list of cases to flag
+    # second : there is a number of flagged cases around equal to the number of the case
+    #   if yes, add the unknown cases remaining around to the list of cases to click
+    caseToClick=[]
+    caseToFlag=[]
+    for case in caseToCheck:
+        localToCheck=[]
+        for dy in range(-1, 2):
+            for dx in range(-1, 2):
+                localToCheck.append([case[0]+dy, case[1]+dx])
+        unknown=0
+        flagged=0
+        for coords in localToCheck:
+            if 0<=coords[1]<HEIGHT and 0<=coords[0]<WIDTH:
+                if aiBoard[coords[0]][coords[1]]=="*":
+                    unknown+=1
+                elif aiBoard[coords[0]][coords[1]]=="~":
+                    flagged+=1
+        
     
+    print(caseToClick)
+    print(caseToFlag)
+    for case in caseToClick:
+        canvas.event_generate('<Button-1>', x=case[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=case[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+    for case in caseToFlag:
+        canvas.event_generate('<Button-3>', x=case[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=case[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+    print("dzadazd")
+    window.after(AISPEED, ai)
+
+startAI()
+
 window.mainloop()
 
 
