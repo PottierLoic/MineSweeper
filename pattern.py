@@ -11,20 +11,23 @@ import copy
 
 # first, the pattern part :
 # a 2D list that contains str, a "!" means a discovered case and a "*" means an unknown one
-# if it's a number, it represents the number on the case
+# if it's a number, it represents the number on the case, of course, it is discovered
 
 # and the bombPos and safePos parts :
 # it is a list of coords, thoses are the relative positions that are bombs or safe places so the ai can flag/click on them
 
-# each pattern has 4 rotations and 2 reversals, so the ai can check for all of them
+# each pattern has 4 rotations and 2 reversals, so the ai can check for all of them (edit : some are useless so i removed them)
 # the name will be name, nameR, nameR2, nameR3, name' and name'R, name'R2, name'R3
 
 # patterns implemented from https://minesweeper.online/help/patterns
-
 # already done : 1-1, 1-1+, 1-2(don't need to do 1-2C), 1-2+
-# 1-2-1 pattern is useless because it just use the basic 1-2 two times s we don't need to implement it
-# 1-2-2-1 is the same
-# then reduction, holes, triangles, and some high complexity paterns
+# 1-2-1 pattern is useless because it just use the basic 1-2 and basic checks of part 1 will unlock the problem
+# 1-2-2-1 is the same, it use juste 1-2 and after it can find everything wth the basic check of part 1
+
+# the reduction par is not made with patterns but with boardReducer, 
+# it just subtract to number the amount of flagged cases around, and remove bombs from the board by putting 0 instead
+# then make a new board with them, that is ready to be put in pattern finder
+# holes, triangles, and some high complexity paterns
 patternList={
     "1-1": {
         "pattern": [["!", "*", "*", "*"],
@@ -292,8 +295,6 @@ patternList={
         "safePos": []
     },
 
-
-# verifier si les reverse de 1-2+ sont bons
     "1-2+'": {
         "pattern": [['!', '!', '!', '*'],
                     ['!', 1, 4, '*'], 
@@ -314,63 +315,24 @@ patternList={
     },
 
     "1-2+'R2": {
-        "pattern": [['*', '!', '!', '!'], 
+        "pattern": [['*', '*', '*', '*'], 
                     ['*', 4, 1, '!'], 
-                    ['*', '*', '*', '*']],
+                    ['*', '!', '!', '!']],
 
         "bombPos": [[0, 0], [1, 0], [2, 0]], 
         "safePos": []
     },
 
     "1-2+'R3": {
-        "pattern": [['!', '!', '*'], 
-                    ['!', 1, '*'], 
-                    ['!', 4, '*'], 
+        "pattern": [['*', '!', '!'], 
+                    ['*', 1, '!'], 
+                    ['*', 4, '!'], 
                     ['*', '*', '*']],
 
         "bombPos": [[3, 0], [3, 1], [3, 2]], 
         "safePos": []
     },
 
-    # "1-2-1": {
-    #     "pattern": [['*', '*', '*', '*', '*'], 
-    #                 ['!',  1 ,  2 ,  1 , '!'], 
-    #                 ['!', '!', '!', '!', '!']],
-
-    #     "bombPos": [[0, 1], [0, 3]], 
-    #     "safePos": []
-    # },
-
-    # "1-2-1R1": {
-    #     "pattern": [['*', '!', '!'], 
-    #                 ['*', 1, '!'], 
-    #                 ['*', 2, '!'], 
-    #                 ['*', 1, '!'], 
-    #                 ['*', '!', '!']],
-
-    #     "bombPos": [[1, 0], [3, 0]], 
-    #     "safePos": []
-    # },
-
-    # "1-2-1R2": {
-    #     "pattern": [['!', '!', '!', '!', '!'], 
-    #                 ['!', 1, 2, 1, '!'], 
-    #                 ['*', '*', '*', '*', '*']],
-
-    #     "bombPos": [[2, 1], [2, 3]], 
-    #     "safePos": []
-    # },
-
-    # "1-2-1R3": {
-    #     "pattern": [['!', '!', '*'], 
-    #                 ['!', 1, '*'], 
-    #                 ['!', 2, '*'], 
-    #                 ['!', 1, '*'], 
-    #                 ['!', '!', '*']],
-
-    #     "bombPos": [[1, 2], [3, 2]],
-    #     "safePos": []
-    # },
 }
 
 def rotatePattern(pattern):
@@ -452,7 +414,7 @@ def patternFinder(board):
 
                     if found:
                         y, x = row-1, col-1
-                        print("found ", name, " in ", row, col)
+                        #print("found ", name, " in ", y, x)
                         end=True
                         break
 
@@ -477,7 +439,7 @@ def patternFinder(board):
 
 # this function work BUT this is not a good solution, we can't use all patterns with this
 # boardReducer substract to all numbers with unknown tiles around the number of flags around them
-# this is the third solution if the basic solution and pattern finding didn't worked
+# this is the third solution if the basic solution and pattern finding didn't work
 def boardReducer(board):
     newBoard=[]
     for y in range(len(board)):
@@ -505,45 +467,46 @@ def boardReducer(board):
                     newBoard[y].append(board[y][x])
 
             else:
-                newBoard[y].append(board[y][x])
+                if board[y][x]=="~":
+                    newBoard[y].append(0)
+                else:
+                    newBoard[y].append(board[y][x])
     return newBoard
                     
-
-
 patternRate=[]
 
 
+# b= [['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '!',  2 ,  3 ,  2 , '!', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '!', '!', '*', '!', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
+#     ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*']]
 
 
-b= [['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*',  1 ,  1 , '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*',  1 ,  1 , "*", '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*',  1 ,  4 , '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*'], 
-    ['*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*', '*']]
+# b=boardReducer(b)
+# bomb=(patternFinder(b))
 
+# print(bomb)
+# if bomb!=None:
+#     for coords in bomb[1]:
+#         b[coords[0]][coords[1]]="O"
 
-
-bomb=(patternFinder(b))
-
-for coords in bomb[1]:
-    b[coords[0]][coords[1]]="O"
-
-for i in b:
-    for j in i:
-        print(j, end=" ")
-    print("")
+# for i in b:
+#     for j in i:
+#         print(j, end=" ")
+#     print("")

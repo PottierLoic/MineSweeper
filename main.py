@@ -16,7 +16,7 @@ LOOSE_COLOR = "#FF0000"
 MINE_AMOUNT=100
 HEIGHT=20
 WIDTH=20
-SQUARE_SIZE=5
+SQUARE_SIZE=10
 BORDER_SIZE=10
 
 # main board class
@@ -238,6 +238,8 @@ label.pack()
 victory=0
 defeat=0
 scores=[]
+rngCount=0
+rngCountTotal=0
 
 victoryText="Victory : "+str(victory)
 victoryLabel = Label(window, text=victoryText, font=("consolas", 10))
@@ -361,15 +363,14 @@ def flagCase(posx, posy):
 # left click on the case specified in parameters --> discover the case
 def clickCase(posx, posy):
     canvas.event_generate('<Button-1>', x=posx*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=posy*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
-
+lastAction=[]
 # main ai
 def ai():
     updateAIBoard()
-    lastAction=[]
+
+    global rngCount, rngCountTotal
     
-
-
-    # FIRST PART OF THE AI
+    # FIRST PART
     # this part will try to solve the actual state by checking one case at a time
     # it will no take into account the others numbers around it
 
@@ -387,14 +388,6 @@ def ai():
                 if valid:
                     caseToCheck.append((y, x))
 
-    # if the first click is on a number, we need to click on another random case
-    # to avoid a random click when we only have one unknown case left, we need to count unknown cases
-    totalUnknown=0
-    for row in aiBoard:
-        for col in row:
-            if col=="*":
-                totalUnknown+=1
-
     #check around cases in caseToCheck if :
     # first : there is a number of unknown cases around equal to the number of the case - number of flags around already placed
     #   if yes, call the flagCase function for theses coords
@@ -402,9 +395,8 @@ def ai():
     #   if yes, call the clickCase function for theses coords
     done=False
     for case in caseToCheck:
-        if not done:  
+        if not done:
             localToCheck=[]
-
             # For each case, we need to get the coords of all the cases around
             for dy in range(-1, 2):
                 for dx in range(-1, 2):
@@ -421,103 +413,112 @@ def ai():
                     elif aiBoard[coords[0]][coords[1]]=="~":
                         flagged+=1
 
-            # if the number of unknown cases around is equal to the number on the actual case - flags around
-            # we can juste flag every unknown case because there is 0% chance for them to be a bomb
             if type(aiBoard[case[0]][case[1]])==int:
-                if unknown==aiBoard[case[0]][case[1]]-flagged:
+                # if the number of flagged cases around is equal to the number on the actual case
+                # it means that all the bombs are found, so we can click on every unknown cas
+                if flagged==aiBoard[case[0]][case[1]]:
                     for unknownCase in unknownList:
-                        if b.finished:
-                            break
-                        flagCase(unknownCase[1], unknownCase[0])
+                        clickCase(unknownCase[1], unknownCase[0])
+                        lastAction.append("basic click : clicked on : "+str(unknownCase[1])+" "+str(unknownCase[0])) # to debug basic click error (when around case match the number of a case)
+                        #print("click")
                     done=True
-            # if the number of flagged cases around is equal to the number on the actual case
-            # it means that all the bombs are found, so we can click on every unknown case
-            if flagged==aiBoard[case[0]][case[1]]:
-                for unknownCase in unknownList:
-                    if b.finished:
-                        break
-                    clickCase(unknownCase[1], unknownCase[0])
-                    if b.finished:
-                        print("raté a cause d'un click normal en : ", unknownCase[1], unknownCase[0])
-                        printAIBoard()
-                done=True
+                            
+                # if the number of unknown cases around is equal to the number on the actual case - flags around
+                # we can juste flag every unknown case because there is 0% chance for them to be a bomb
+                elif unknown==aiBoard[case[0]][case[1]]-flagged:
+                    for unknownCase in unknownList:
+                        flagCase(unknownCase[1], unknownCase[0])
+                        lastAction.append("basic flag : flagged : "+str(unknownCase[1])+" "+str(unknownCase[0])) # to debug basic flag error (when around case match the number of a case)
+                        #print("flag")
+                    done=True
 
-            #if ai fail, no need to continue
+            #if game is finished, no need to continue
+            # the ai can't fail here, standart click and flags are a 100% percent chance safe
+            # BUT if a pattern has an error in it, this part can loose because the infos provided are wrong (a flag on a safe case for example)
+
+            #TODO find a way to see if this corresponds to a victory or loose
+            # if loose, need to print something because if this part fails, it is a pattern problem from the next part
             if b.finished:
+                if b.checkLoose():
+                    print("loose on a basic action ! CHECK PATTERNS")
+                if b.checkWin():
+                    print("ça va c'est win")
                 break
 
-    # SECOND PART OF THE AI
+    # SECOND PART
+    # Patter finder part
     # if the first part does not provide any single action to do, this part is the only way to continue the game
     # it will try to find patterns in the board that allow us to continue by taking into account groups of cases
-    done2=False
     if not done:
         patternRecognition=pattern.patternFinder(aiBoard)
         if patternRecognition!=None:
             if patternRecognition[0]=="safe":
                 for coords in patternRecognition[1]:
                     clickCase(coords[1], coords[0])
-                    done2=True
-                    lastAction="pattern : clicked on : "+str(coords[1])+", "+str(coords[0]) #to debug pattern errors
+                    lastAction.append("pattern : clicked on : "+str(coords[1])+", "+str(coords[0])) #to debug pattern errors
+                    #print("patter click")
             else:
                 for coords in patternRecognition[1]:
                     flagCase(coords[1], coords[0])
-                    done2=True
-                    lastAction="patter : flagged on : "+str(coords[1])+", "+str(coords[0]) #to debug pattern errors
+                    lastAction.append("pattern : flagged on : "+str(coords[1])+", "+str(coords[0])) #to debug pattern errors
+                    #print("patter flag")
+            done=True
 
-
+    # THIRD PART
     # patter reduction part
-    # not working very well (from 82% average remaining bombs to 95 when activated),
-    # need to work on it to make it good 
+    # this part will reduce the board numbers by using the boardReducer function form pattern.py
+    # it will substract the number of bombs around a number to its value and remove the bombs at the end
+    # so we don't have to implement every possibiliy in the pattern section
+    if not done:
+        boardReduced=copy.deepcopy(pattern.boardReducer(copy.deepcopy(aiBoard)))
+        patternRecognition=pattern.patternFinder(boardReduced)
+        if patternRecognition!=None:
+            #print("pattern reduit trouvé : ", end="") #to debug the pattern reducing strat
+            #print("coords are : ", patternRecognition)
+            if patternRecognition[0]=="safe":
+                for coords in patternRecognition[1]:
+                    clickCase(coords[1], coords[0])
+                    lastAction.append("reduced pattern : clicked on : "+str(coords[1])+", "+str(coords[0])) #to debug reduced pattern errors
+                    #print("reduced pattern click")
 
-    # if not done2:
-    #     boardReduced=copy.deepcopy(pattern.boardReducer(copy.deepcopy(aiBoard)))
-    #     patternRecognition=pattern.patternFinder(boardReduced)
-    #     if patternRecognition!=None:
-    #         # print("pattern reduit trouvé")
-    #         # print(patternRecognition)
-    #         # printAIBoard()
-    #         # bassa=pattern.boardReducer(aiBoard)
-    #         # for i in bassa:
-    #         #     for j in i:
-    #         #         print(j, end=" ")
-    #         #     print("")
-    #         # print("-------------------")
-
-    #         if patternRecognition[0]=="safe":
-    #             for coords in patternRecognition[1]:
-    #                 clickCase(coords[1], coords[0])
-    #                 done2=True
-    #                 lastAction="patternreduced : clicked on : "+str(coords[1])+", "+str(coords[0]) #to debug reduced pattern errors
-    #         else:
-    #             for coords in patternRecognition[1]:
-    #                 flagCase(coords[1], coords[0])
-    #                 done2=True
-    #                 lastAction="patterreduced : flagged on : "+str(coords[1])+", "+str(coords[0]) #to debug reduced pattern errors
+            else:
+                for coords in patternRecognition[1]:
+                    flagCase(coords[1], coords[0])
+                    lastAction.append("reduced pattern : flagged on : "+str(coords[1])+", "+str(coords[0])) #to debug reduced pattern errors
+                    #print("reduced pattern click")
+            done=True
         
-        #this part is the last thing we can try, a random click
-        else:
-            unknownList=[]
-            for row in range(HEIGHT):
-                for col in range(WIDTH):
-                    if aiBoard[row][col]=="*":
-                        unknownList.append([row, col])
-            if len(unknownList)!=0:
-                rd=random.choice(unknownList)
-                canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
-                lastAction="rng : clicked on : "+str(rd[1])+", "+str(rd[0]) #to debug
+    # LAST PART
+    # just take all the unknown positions left and click on one randomly
+    # that's the last thing we can do if every other part failed
+    if not done:
+        unknownList=[]
+        for row in range(HEIGHT):
+            for col in range(WIDTH):
+                if aiBoard[row][col]=="*":
+                    unknownList.append([row, col])
+        if len(unknownList)!=0:
+            rd=random.choice(unknownList)
+            canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+            lastAction.append("rng : clicked on : "+str(rd[1])+", "+str(rd[0])) #to debug
+
+            rngCountTotal+=1
+            if b.finished:
+                rngCount+=1
             
     # If ai fail, reset here to gain time on the loops
     # otherwise, we need to wait for the next click, so the ai need to fill caseToCheck and a lot of other things
     if b.finished:
         if lastAction!=[]:
-            pass
-            #print(lastAction)
+            print(lastAction[-1])
+        lastAction.clear()
         nb=0
         for row in b.supBoard:
             for col in row:
                 if col==2:
                     nb+=1
         scores.append(MINE_AMOUNT-nb)
+
         reset()
         startAI()
     else:
@@ -527,6 +528,7 @@ startAI()
 
 window.mainloop()
 
+#---------------------------------------
 # statistics part, printed on window exit
 
 # patternFinder
@@ -540,7 +542,9 @@ print("------------------\n")
 a="Total victories : "
 b="Total defeats :   "
 print(f"{a:<15}{victory:<20}")
-print(f"{b:<15}{defeat:<20}\n")
+print(f"{b:<15}{defeat:<20}")
+
+print("number of rng clicks that caused a defeat is : ", rngCount, " / ", rngCountTotal, "\n")
 
 # average score (nomber on unflagged bombs)
 avg=0
@@ -549,3 +553,4 @@ for i in scores:
 avg/=len(scores)
 print("average score of this session is : ", avg, "\n")
 print("wich mean that ", 100-round((avg/MINE_AMOUNT)*100, 2), "% of bombs have been found")
+
