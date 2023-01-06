@@ -3,6 +3,7 @@
 # Creation date : 21/12/2022
 
 # IMPORTS
+import copy
 from tkinter import *
 from PIL import Image, ImageTk
 import random
@@ -12,10 +13,10 @@ import pattern #pattern.py file of this projets, used to store all patterns and 
 BACKGROUND_COLOR = "#E0E0E0"
 WIN_COLOR = "#00FF00"
 LOOSE_COLOR = "#FF0000"
-MINE_AMOUNT=70
+MINE_AMOUNT=100
 HEIGHT=20
 WIDTH=20
-SQUARE_SIZE=30
+SQUARE_SIZE=5
 BORDER_SIZE=10
 
 # main board class
@@ -231,11 +232,12 @@ window = Tk()
 window.title("MineSweeper")
 window.resizable(False, False)
 
-label = Label(window, text="MineSweeper", font=("consolas", 40))
+label = Label(window, text="MineSweeper", font=("consolas", 10))
 label.pack()
 
 victory=0
 defeat=0
+scores=[]
 
 victoryText="Victory : "+str(victory)
 victoryLabel = Label(window, text=victoryText, font=("consolas", 10))
@@ -345,7 +347,6 @@ def startAI():
         initAIBoard()
         updateAIBoard()
         discoverFirstCase()
-
         window.after(AISPEED, ai)
 
 # empty function that we call in the window.after line
@@ -365,6 +366,8 @@ def clickCase(posx, posy):
 def ai():
     updateAIBoard()
     lastAction=[]
+    
+
 
     # FIRST PART OF THE AI
     # this part will try to solve the actual state by checking one case at a time
@@ -434,6 +437,9 @@ def ai():
                     if b.finished:
                         break
                     clickCase(unknownCase[1], unknownCase[0])
+                    if b.finished:
+                        print("raté a cause d'un click normal en : ", unknownCase[1], unknownCase[0])
+                        printAIBoard()
                 done=True
 
             #if ai fail, no need to continue
@@ -443,21 +449,52 @@ def ai():
     # SECOND PART OF THE AI
     # if the first part does not provide any single action to do, this part is the only way to continue the game
     # it will try to find patterns in the board that allow us to continue by taking into account groups of cases
+    done2=False
     if not done:
         patternRecognition=pattern.patternFinder(aiBoard)
         if patternRecognition!=None:
             if patternRecognition[0]=="safe":
                 for coords in patternRecognition[1]:
                     clickCase(coords[1], coords[0])
-                    lastAction="pattern : clicked on : "+str(coords[1])+", "+str(coords[0])
-                    if b.finished:
-                        print("raté a cause du pattern")
+                    done2=True
+                    lastAction="pattern : clicked on : "+str(coords[1])+", "+str(coords[0]) #to debug pattern errors
             else:
                 for coords in patternRecognition[1]:
                     flagCase(coords[1], coords[0])
-                    lastAction="patter : flagged on : "+str(coords[1])+", "+str(coords[0])
-                    if b.finished:
-                        print("raté a cause du pattern")
+                    done2=True
+                    lastAction="patter : flagged on : "+str(coords[1])+", "+str(coords[0]) #to debug pattern errors
+
+
+    # patter reduction part
+    # not working very well (from 82% average remaining bombs to 95 when activated),
+    # need to work on it to make it good 
+
+    # if not done2:
+    #     boardReduced=copy.deepcopy(pattern.boardReducer(copy.deepcopy(aiBoard)))
+    #     patternRecognition=pattern.patternFinder(boardReduced)
+    #     if patternRecognition!=None:
+    #         # print("pattern reduit trouvé")
+    #         # print(patternRecognition)
+    #         # printAIBoard()
+    #         # bassa=pattern.boardReducer(aiBoard)
+    #         # for i in bassa:
+    #         #     for j in i:
+    #         #         print(j, end=" ")
+    #         #     print("")
+    #         # print("-------------------")
+
+    #         if patternRecognition[0]=="safe":
+    #             for coords in patternRecognition[1]:
+    #                 clickCase(coords[1], coords[0])
+    #                 done2=True
+    #                 lastAction="patternreduced : clicked on : "+str(coords[1])+", "+str(coords[0]) #to debug reduced pattern errors
+    #         else:
+    #             for coords in patternRecognition[1]:
+    #                 flagCase(coords[1], coords[0])
+    #                 done2=True
+    #                 lastAction="patterreduced : flagged on : "+str(coords[1])+", "+str(coords[0]) #to debug reduced pattern errors
+        
+        #this part is the last thing we can try, a random click
         else:
             unknownList=[]
             for row in range(HEIGHT):
@@ -467,13 +504,20 @@ def ai():
             if len(unknownList)!=0:
                 rd=random.choice(unknownList)
                 canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
-                lastAction="rng : clicked on : "+str(rd[1])+", "+str(rd[0])
+                lastAction="rng : clicked on : "+str(rd[1])+", "+str(rd[0]) #to debug
             
     # If ai fail, reset here to gain time on the loops
     # otherwise, we need to wait for the next click, so the ai need to fill caseToCheck and a lot of other things
     if b.finished:
         if lastAction!=[]:
-            print(lastAction)
+            pass
+            #print(lastAction)
+        nb=0
+        for row in b.supBoard:
+            for col in row:
+                if col==2:
+                    nb+=1
+        scores.append(MINE_AMOUNT-nb)
         reset()
         startAI()
     else:
@@ -482,3 +526,26 @@ def ai():
 startAI()
 
 window.mainloop()
+
+# statistics part, printed on window exit
+
+# patternFinder
+print("\n------------------")
+print("patterFinder stats")
+for name, p in pattern.patternList.items():
+    print(f"{name:<10}{pattern.patternRate.count(name):<20}")
+print("------------------\n")
+
+# win/loose 
+a="Total victories : "
+b="Total defeats :   "
+print(f"{a:<15}{victory:<20}")
+print(f"{b:<15}{defeat:<20}\n")
+
+# average score (nomber on unflagged bombs)
+avg=0
+for i in scores:
+    avg+=i
+avg/=len(scores)
+print("average score of this session is : ", avg, "\n")
+print("wich mean that ", 100-round((avg/MINE_AMOUNT)*100, 2), "% of bombs have been found")
