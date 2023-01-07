@@ -14,8 +14,8 @@ BACKGROUND_COLOR = "#E0E0E0"
 WIN_COLOR = "#00FF00"
 LOOSE_COLOR = "#FF0000"
 MINE_AMOUNT=100
-HEIGHT=16
-WIDTH=30
+HEIGHT=20
+WIDTH=20
 SQUARE_SIZE=30
 BORDER_SIZE=10
 
@@ -468,7 +468,7 @@ def ai():
             done=True
 
     # THIRD PART
-    # patter reduction part
+    # pattern reduction part
     # this part will reduce the board numbers by using the boardReducer function form pattern.py
     # it will substract the number of bombs around a number to its value and remove the bombs at the end
     # so we don't have to implement every possibiliy in the pattern section

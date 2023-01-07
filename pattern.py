@@ -510,7 +510,7 @@ def patternFinder(board):
 
                 if found:
                     break
-                    
+   
         if found:
             returnList=[]
 
