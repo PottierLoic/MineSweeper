@@ -7,16 +7,16 @@ import copy
 from tkinter import *
 from PIL import Image, ImageTk
 import random
-import pattern #pattern.py file of this projets, used to store all patterns and their unique solution
+import pattern #pattern.py file of this projet, used to store all patterns and their unique solution
 
 # CONSTANTS
 BACKGROUND_COLOR = "#E0E0E0"
 WIN_COLOR = "#00FF00"
 LOOSE_COLOR = "#FF0000"
 MINE_AMOUNT=100
-HEIGHT=20
-WIDTH=20
-SQUARE_SIZE=10
+HEIGHT=16
+WIDTH=30
+SQUARE_SIZE=30
 BORDER_SIZE=10
 
 # main board class
@@ -57,7 +57,7 @@ class Board():
                     # check bomb presence in each position around actual pos
                     bombs=0
                     for coords in toCheck:
-                        if 0<=coords[1]<HEIGHT and 0<=coords[0]<WIDTH:
+                        if 0<=coords[0]<HEIGHT and 0<=coords[1]<WIDTH:
                             if self.board[coords[0]][coords[1]]=="x":
                                 bombs+=1
                     self.board[y][x]=bombs
@@ -92,11 +92,11 @@ class Board():
                         if self.supBoard[y+dy][x+dx]==0:
                             toCheck.append([y+dy, x+dx])
             for coords in toCheck:
-                if 0<=coords[1]<HEIGHT and 0<=coords[0]<WIDTH:
+                if 0<=coords[0]<HEIGHT and 0<=coords[1]<WIDTH:
                     self.supBoard[coords[0]][coords[1]]=1
 
             for coords in toCheck:
-                if 0<=coords[1]<HEIGHT and 0<=coords[0]<WIDTH:
+                if 0<=coords[0]<HEIGHT and 0<=coords[1]<WIDTH:
                     if self.board[coords[0]][coords[1]]==0:
                         self.discoveryExtend(coords[1], coords[0])
 
@@ -129,7 +129,7 @@ def leftClick(e):
             win()
     else:
         reset()
-    
+
 # called by tk when the right click is used
 # it change the case to either flagged if it was unknown
 # or to unknown if it was flagged
@@ -205,6 +205,10 @@ def reset():
     b=Board()
     canvas.config(bg=BACKGROUND_COLOR)
     label.config(text="MineSweeper")
+
+    if not AI_ON:
+        discoverFirstCase()
+
     graphics()
 
 # function used for the first click on the board, as in the original game, we can't loose on the first click
@@ -406,7 +410,7 @@ def ai():
             flagged=0
             # we get the number of flagged and unknown cases in the precedent list
             for coords in localToCheck:
-                if 0<=coords[1]<HEIGHT and 0<=coords[0]<WIDTH:
+                if 0<=coords[0]<HEIGHT and 0<=coords[1]<WIDTH:
                     if aiBoard[coords[0]][coords[1]]=="*":
                         unknown+=1
                         unknownList.append([coords[0], coords[1]])
@@ -441,8 +445,6 @@ def ai():
             if b.finished:
                 if b.checkLoose():
                     print("loose on a basic action ! CHECK PATTERNS")
-                if b.checkWin():
-                    print("ça va c'est win")
                 break
 
     # SECOND PART
@@ -452,6 +454,7 @@ def ai():
     if not done:
         patternRecognition=pattern.patternFinder(aiBoard)
         if patternRecognition!=None:
+            #print(patternRecognition)
             if patternRecognition[0]=="safe":
                 for coords in patternRecognition[1]:
                     clickCase(coords[1], coords[0])
@@ -488,9 +491,67 @@ def ai():
                     #print("reduced pattern click")
             done=True
         
+   # FOURTH PART
+   # probability part, to be used in the last part of the game
+   # it will calculate the probability of a case to be a bomb by using the number of bombs around it and the number of unknown cases around it
+   # it will then click on the case with the lowest probability
+    if not done:
+        probBoard=[]
+        for i in range(HEIGHT):
+            probBoard.append([])
+            for j in range(WIDTH):
+                probBoard[i].append([])
+
+        for y in range(len(aiBoard)):
+            for x in range (len(aiBoard[y])):
+                if aiBoard[y][x] not in ("*", 0, "~", "*"):
+                    valid=False
+                    localUnknown=[]
+                    flagged=0
+                    for dy in range(-1, 2):
+                        for dx in range(-1, 2):
+                            if 0<=y+dy<HEIGHT and 0<=x+dx<WIDTH:
+                                if aiBoard[y+dy][x+dx]=="*":
+                                    localUnknown.append((y+dy, x+dx))
+                                    valid=True
+                                elif aiBoard[y+dy][x+dx]=="~":
+                                    flagged+=1
+                    if valid:
+                        toFind=aiBoard[y][x]-flagged
+                        prob=len(localUnknown)/toFind
+                        for unknown in localUnknown:
+                            probBoard[unknown[0]][unknown[1]].append(prob)
+
+        # we do the avg of each case
+        for y in range(len(probBoard)):
+            for x in range(len(probBoard[y])):
+                if probBoard[y][x]!=[]:
+                    probBoard[y][x]=sum(probBoard[y][x])/len(probBoard[y][x])
+                else:
+                    probBoard[y][x]=0
+        
+        min=100
+        probx=-1
+        proby=-1
+        for y in range(len(probBoard)):
+            for x in range(len(probBoard[y])):
+                if probBoard[y][x]<min and probBoard[y][x]!=0:
+                    min=probBoard[y][x]
+                    probx=x
+                    proby=y
+
+        # if no position found, we click on a random unknown case
+        if probx!=-1 and proby!=-1:
+            canvas.event_generate('<Button-1>', x=probx*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=proby*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+            done=True
+            lastAction.append("prob : clicked on : "+str(probx)+", "+str(proby)) #to debug
+            rngCountTotal+=1
+            if b.finished:
+                rngCount+=1
+    
     # LAST PART
-    # just take all the unknown positions left and click on one randomly
-    # that's the last thing we can do if every other part failed
+    # If the last cases have non numbers around them, we can juste try a random click
+    # that a pretty rare case, but it can happen
     if not done:
         unknownList=[]
         for row in range(HEIGHT):
@@ -502,14 +563,11 @@ def ai():
             canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
             lastAction.append("rng : clicked on : "+str(rd[1])+", "+str(rd[0])) #to debug
 
-            rngCountTotal+=1
-            if b.finished:
-                rngCount+=1
-            
+
     # If ai fail, reset here to gain time on the loops
     # otherwise, we need to wait for the next click, so the ai need to fill caseToCheck and a lot of other things
     if b.finished:
-        if lastAction!=[]:
+        if lastAction!=[] and not b.checkWin():
             print(lastAction[-1])
         lastAction.clear()
         nb=0
