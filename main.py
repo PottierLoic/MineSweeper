@@ -13,7 +13,7 @@ import pattern #pattern.py file of this projet, used to store all patterns and t
 BACKGROUND_COLOR = "#E0E0E0"
 WIN_COLOR = "#00FF00"
 LOOSE_COLOR = "#FF0000"
-MINE_AMOUNT=100
+MINE_AMOUNT=60
 HEIGHT=20
 WIDTH=20
 SQUARE_SIZE=30

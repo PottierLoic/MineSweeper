@@ -28,11 +28,12 @@ Author : Loïc Pottier
     <br>
     ## TODO :  
     * Some pattern are much more common than others, need to run a lot of games with differents bombs density and re-arrange the pattern list so the patterRecognition algorithm can find them faster  
-
+    * Need to add another character to pattern, this one would mean "anything but a flag or border" so patterns could be more efficient,   
+    need to check if there is unknown case on the pattern because new char would not need an unknown case to work, it would just find patterns on already discovered parts  
 <br>
 <br>
 
-3. > ## Pattern reduction  
+1. > ## Pattern reduction  
     Do almost the same as the previous part with a little difference  
     It will reduce numbers with a flag around by the number of flags, when all numbers are reduced, every flag is deleted  
     Then it just put the reduced board in the pattern reducer and see if it can find matching patterns  

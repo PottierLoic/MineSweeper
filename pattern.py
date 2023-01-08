@@ -442,19 +442,19 @@ def reversePattern(pattern):
     newPattern.reverse()
     return newPattern
 
-pattern = patternList.get("H2").get("pattern")
+# pattern = patternList.get("H2").get("pattern")
 
-pattern=reversePattern(pattern)
-print(pattern)
+# pattern=reversePattern(pattern)
+# print(pattern)
 
-reversed=rotatePattern(pattern)
-print(reversed)
+# reversed=rotatePattern(pattern)
+# print(reversed)
 
-reversed=rotatePattern(reversed)
-print(reversed)
+# reversed=rotatePattern(reversed)
+# print(reversed)
 
-reversed=rotatePattern(reversed)
-print(reversed)
+# reversed=rotatePattern(reversed)
+# print(reversed)
 
 
 
