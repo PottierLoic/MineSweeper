@@ -13,7 +13,7 @@ Author : Loïc Pottier
     * the number of unknown squares around is equal to the bomb amount --> we can flag all of them  
     * the number of flagged squares around is equal to the bomb amount --> we can click on all of them  
     <br>
-    Thoses are the simple squares, they can't cause a loose as they are 100% sure  
+    Thoses are the simple cases, they can't cause a loose as they are 100% sure  
     The ONLY way of loosing due to a basic action from this part is to have a incorrect pattern  
     If the game flag a non-bomb square, the next basic action will probably fail, but no due to an error from this part  
     <br>
