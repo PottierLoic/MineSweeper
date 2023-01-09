@@ -13,9 +13,9 @@ import pattern #pattern.py file of this projet, used to store all patterns and t
 BACKGROUND_COLOR = "#E0E0E0"
 WIN_COLOR = "#00FF00"
 LOOSE_COLOR = "#FF0000"
-MINE_AMOUNT=60
-HEIGHT=20
-WIDTH=20
+MINE_AMOUNT=40
+HEIGHT=16
+WIDTH=16
 SQUARE_SIZE=30
 BORDER_SIZE=10
 
@@ -296,17 +296,15 @@ bombImage=ImageTk.PhotoImage(Image.open("img/bomb.png").resize((SQUARE_SIZE, SQU
 hiddenImage=ImageTk.PhotoImage(Image.open("img/hidden.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
 flagImage=ImageTk.PhotoImage(Image.open("img/flag.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
 
-#affichage du plateau
 graphics()
 
 #------------------------------------------------------------------------
 # IA PART
 #------------------------------------------------------------------------
 
-# set this to false to desactivate AI part and play yourself
+# set this to false to desactivate AI and play yourself
 AI_ON = True
 
-# Minimum possible value looks to be 4, maybe 1 on a good pc
 # the lower the speed is, the faster the ia is, it represent the time waited between every action, so the tkinter interface can follow
 AISPEED=1
 
@@ -324,7 +322,7 @@ def initAIBoard():
             aiBoard[i].append(0)
 
 # update the ai board using the sup and main board
-# in simple terms, it only contain what a real player can see from the game
+# it only contain what a real player can see from the game
 # every case that is not discovered on the suppBoard will contain "*"
 def updateAIBoard():
     for y in range(len(b.board)):
@@ -490,7 +488,7 @@ def ai():
                     lastAction.append("reduced pattern : flagged on : "+str(coords[1])+", "+str(coords[0])) #to debug reduced pattern errors
                     #print("reduced pattern click")
             done=True
-        
+
    # FOURTH PART
    # probability part, to be used in the last part of the game
    # it will calculate the probability of a case to be a bomb by using the number of bombs around it and the number of unknown cases around it
@@ -562,7 +560,6 @@ def ai():
             rd=random.choice(unknownList)
             canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
             lastAction.append("rng : clicked on : "+str(rd[1])+", "+str(rd[0])) #to debug
-
 
     # If ai fail, reset here to gain time on the loops
     # otherwise, we need to wait for the next click, so the ai need to fill caseToCheck and a lot of other things
