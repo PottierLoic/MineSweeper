@@ -5,6 +5,7 @@
 # IMPORTS
 import time
 import random
+import os
 
 import copy
 from tkinter import *
@@ -138,9 +139,17 @@ def discoverFirstCase():
         rd=random.choice(unknownList)
         canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
 
+# print the board in parameter in console, used for debug, I leave it here
+def printBoard(b):
+    os.system('cls')
+    for row in b:
+        for col in row:
+            print(col, end=" ")
+        print("")
+    print("")
+
 # STATS SECTION
 # used at the end of the file 
-
 victory=0
 defeat=0
 scores=[]
@@ -269,33 +278,31 @@ def boardCutter():
             break
 
     # in case board don't have fully unknown part, we try to remove fully discovered lines
-
     # removing discovered part cause basic click error, need to work on it
+    if yStart==0:
+        for row in range(len(aiBoard)):
+            valid=True
+            for value in aiBoard[row]:
+                if value=="*":
+                    valid=False
+                    break
+            if valid:
+                yStart=row
+            else:
+                break
 
-    # if yStart==0:
-    #     for row in range(len(aiBoard)):
-    #         valid=True
-    #         for value in aiBoard[row]:
-    #             if value=="*":
-    #                 valid=False
-    #                 break
-    #         if valid:
-    #             yStart=row
-    #         else:
-    #             break
-
-    # # same but starting from the end
-    # if yEnd==len(aiBoard)-1:
-    #     for row in range(len(aiBoard)-1, 0, -1):
-    #         valid=True
-    #         for value in aiBoard[row]:
-    #             if value=="*":
-    #                 valid=False
-    #                 break
-    #         if valid:
-    #             yEnd=row
-    #         else:
-    #             break
+    # same but starting from the end
+    if yEnd==len(aiBoard)-1:
+        for row in range(len(aiBoard)-1, 0, -1):
+            valid=True
+            for value in aiBoard[row]:
+                if value=="*":
+                    valid=False
+                    break
+            if valid:
+                yEnd=row
+            else:
+                break
 
     # get the highest collum we need to add
     for value in range(len(aiBoard[0])):
@@ -321,6 +328,32 @@ def boardCutter():
             xEnd=value
         else:
             break
+
+    # if we can't remove unknown part, we try to remove discovered part
+    # get the highest collum we need to add
+    for value in range(len(aiBoard[0])):
+        valid=True
+        for row in range(len(aiBoard)):
+            if aiBoard[row][value]=="*":
+                valid=False
+                break
+        if valid:
+            xStart=value
+        else:
+            break
+
+    xEnd=len(aiBoard[0])-1
+    # do the same but starting from the end to find the ending value
+    for value in range(len(aiBoard[0])-1, 0, -1):
+        valid=True
+        for row in range(len(aiBoard)):
+            if aiBoard[row][value]=="*":
+                valid=False
+                break
+        if valid:
+            xEnd=value
+        else:
+            break
     
     # add all the lines between yStart and xEnd and only values between xStart and xEnd
     for row in range(yStart, yEnd+1):
@@ -330,14 +363,6 @@ def boardCutter():
         return aiBoard, 0, 0
     else:
         return newBoard, xStart, yStart
-
-# print the aiBoard in cli, used for debug, I leave it here
-def printAIBoard():
-    for row in aiBoard:
-        for col in row:
-            print(col, end="")
-        print("")
-    print("")
 
 # do the first random click on the board
 # then start the ai function
@@ -373,6 +398,7 @@ def ai():
     # we call the board cutter only if the board is too big (more than 40x40)
     aiBoard, shiftX, shiftY = boardCutter()
 
+    printBoard(aiBoard)
     # FIRST PART
     # this part will try to solve the actual state by checking one case at a time
     # it will no take into account the others numbers around it

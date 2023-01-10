@@ -91,6 +91,7 @@ class Board():
                     if self.board[coords[0]][coords[1]]==0:
                         self.discoveryExtend(coords[1], coords[0])
 
+    # reset all the board attributes
     def reset(self):
         self.__init__()
 

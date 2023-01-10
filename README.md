@@ -98,7 +98,7 @@ AI can be turned of by setting the AI_ON variable to False (at the start of the 
 AI can be disabled by setting the variable AI_ON at the start of the AI PART to False (to play without help :))  
 
 There are a lot of other parts to add :  
-* function to remove useless lines from the board, and add them back when they are needed.
+*  DONE function to remove useless lines from the board, and add them back when they are needed.
 * function that count remaining mines and look for a 100% safe place, can be used on the end of a game
 * high complexity pattern
 * ...
