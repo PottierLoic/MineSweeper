@@ -3,116 +3,17 @@
 # Creation date : 21/12/2022
 
 # IMPORTS
+import time
+import random
+
 import copy
 from tkinter import *
 from PIL import Image, ImageTk
-import random
-import pattern #pattern.py file of this projet, used to store all patterns and their unique solution
-import time # used to test efficacity
 
-# CONSTANTS
-BACKGROUND_COLOR = "#E0E0E0"
-WIN_COLOR = "#00FF00"
-LOOSE_COLOR = "#FF0000"
-MINE_AMOUNT=50
-HEIGHT=20
-WIDTH=20
-SQUARE_SIZE=2
-BORDER_SIZE=10
-
-# main board class
-# does no contain tkinter parts
-class Board():
-    def __init__(self):
-        self.board=[]
-        self.supBoard=[]
-        self.oldBoard=[]
-        self.finished=False
-
-        # Creation and filling of the main and real board with 0
-        for i in range(HEIGHT):
-            self.board.append([])
-            self.supBoard.append([])
-            self.oldBoard.append([])
-            for j in range(WIDTH):
-                self.board[i].append(0)
-                self.supBoard[i].append(0)
-                self.oldBoard[i].append("!")
-
-
-        # random placement of bombs
-        for i in range(MINE_AMOUNT):
-            while True:
-                rx=random.randint(0, WIDTH-1)
-                ry=random.randint(0, HEIGHT-1)
-                if self.board[ry][rx]!="x":
-                    self.board[ry][rx]="x"
-                    break
-
-        # calculation of the numbers around the bombs
-        for y in range(HEIGHT):
-            for x in range(WIDTH):
-                if self.board[y][x]!="x":
-                    # List of pos to check for bombs
-                    toCheck=[]
-                    for dy in range(-1, 2):
-                        for dx in range(-1, 2):
-                            toCheck.append([y+dy, x+dx])
-                    # check bomb presence in each position around actual pos
-                    bombs=0
-                    for coords in toCheck:
-                        if 0<=coords[0]<HEIGHT and 0<=coords[1]<WIDTH:
-                            if self.board[coords[0]][coords[1]]=="x":
-                                bombs+=1
-                    self.board[y][x]=bombs
-
-    # return True if a bomb is discovered
-    def checkLoose(self):
-        loose=False
-        for i in range(len(self.board)):
-            for j in range (len(self.board[i])):
-                if self.board[i][j]=="x" and self.supBoard[i][j]==1:
-                    loose=True
-        return loose
-
-    # return True if all bombs are flagged
-    def checkWin(self):
-        win=True
-        for i in range(len(self.board)):
-            for j in range (len(self.board[i])):
-                if self.board[i][j]=="x" and self.supBoard[i][j]!=2:
-                    win=False
-        return win
-
-    # this function is called when a case is discovered
-    # if this case is a zero, it will discover the 8 cases around it
-    # and if the discovered cases are zeros, it will make a recursive call with the coord of the case concerned
-    def discoveryExtend(self, x, y):
-        if self.supBoard[y][x]==1 and self.board[y][x]==0:
-            toCheck=[]
-            for dy in range(-1, 2):
-                for dx in range(-1, 2):
-                    if 0<=y+dy<HEIGHT and 0<=x+dx<WIDTH:
-                        if self.supBoard[y+dy][x+dx]==0:
-                            toCheck.append([y+dy, x+dx])
-
-            for coords in toCheck:
-                if 0<=coords[0]<HEIGHT and 0<=coords[1]<WIDTH:
-                    self.supBoard[coords[0]][coords[1]]=1
-
-            for coords in toCheck:
-                if 0<=coords[0]<HEIGHT and 0<=coords[1]<WIDTH:
-                    if self.board[coords[0]][coords[1]]==0:
-                        self.discoveryExtend(coords[1], coords[0])
-
-    #return a printable string of the main board, for debug purpose
-    def __str__(self) -> str:
-        r=""
-        for y in range(HEIGHT):
-            for x in range(WIDTH):
-                r+=str(self.board[y][x])+" "
-            r+="\n"
-        return r
+# other files from this project
+import pattern
+import board
+from constants import *
 
 # called by tk when the left click is used
 # it change the case to discovered if it was unknown
@@ -208,8 +109,7 @@ def win():
 # reset the board by recreating a new Board object 
 # and reverse the changes made by the win/loose function 
 def reset():
-    global b
-    b=Board()
+    b.reset()
     canvas.config(bg=BACKGROUND_COLOR)
     label.config(text="MineSweeper")
 
@@ -238,6 +138,16 @@ def discoverFirstCase():
         rd=random.choice(unknownList)
         canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
 
+# STATS SECTION
+# used at the end of the file 
+
+victory=0
+defeat=0
+scores=[]
+rngCount=0
+rngCountTotal=0
+patternRate=[]
+
 # WINDOW AND TKINTER SECTION
 window = Tk()
 window.title("MineSweeper")
@@ -245,12 +155,6 @@ window.resizable(False, False)
 
 label = Label(window, text="MineSweeper", font=("consolas", 10))
 label.pack()
-
-victory=0
-defeat=0
-scores=[]
-rngCount=0
-rngCountTotal=0
 
 victoryText="Victory : "+str(victory)
 victoryLabel = Label(window, text=victoryText, font=("consolas", 10))
@@ -280,7 +184,7 @@ y = int((screenHeight/2) - (windowHeight/2))
 
 window.geometry(f"{windowWidth}x{windowHeight}+{x}+{y}")
 
-b = Board()
+b = board.Board()
 
 # KEYBINDS (if you want to play without ai)
 window.bind('<Button-1>', leftClick)
@@ -325,7 +229,7 @@ def initAIBoard():
     aiBoard=[]
     for i in range(HEIGHT):
         aiBoard.append([])
-        for j in range(WIDTH):
+        for _ in range(WIDTH):
             aiBoard[i].append(0)
 
 # update the ai board using the sup and main board
@@ -349,9 +253,6 @@ def boardCutter():
     yStart=0
     newBoard=[]
 
-    # print("before")
-    # printAIBoard()
-
     # get the highest line we need to add
     for row in range(len(aiBoard)):
         if aiBoard[row].count("*")==len(aiBoard[row]):
@@ -371,30 +272,30 @@ def boardCutter():
 
     # removing discovered part cause basic click error, need to work on it
 
-    if yStart==0:
-        for row in range(len(aiBoard)):
-            valid=True
-            for value in aiBoard[row]:
-                if value=="*":
-                    valid=False
-                    break
-            if valid:
-                yStart=row
-            else:
-                break
+    # if yStart==0:
+    #     for row in range(len(aiBoard)):
+    #         valid=True
+    #         for value in aiBoard[row]:
+    #             if value=="*":
+    #                 valid=False
+    #                 break
+    #         if valid:
+    #             yStart=row
+    #         else:
+    #             break
 
-    # same but starting from the end
-    if yEnd==len(aiBoard)-1:
-        for row in range(len(aiBoard)-1, 0, -1):
-            valid=True
-            for value in aiBoard[row]:
-                if value=="*":
-                    valid=False
-                    break
-            if valid:
-                yEnd=row
-            else:
-                break
+    # # same but starting from the end
+    # if yEnd==len(aiBoard)-1:
+    #     for row in range(len(aiBoard)-1, 0, -1):
+    #         valid=True
+    #         for value in aiBoard[row]:
+    #             if value=="*":
+    #                 valid=False
+    #                 break
+    #         if valid:
+    #             yEnd=row
+    #         else:
+    #             break
 
     # get the highest collum we need to add
     for value in range(len(aiBoard[0])):
@@ -430,7 +331,7 @@ def boardCutter():
     else:
         return newBoard, xStart, yStart
 
-# print the aiBoard in cli, used for debug, i leave it here
+# print the aiBoard in cli, used for debug, I leave it here
 def printAIBoard():
     for row in aiBoard:
         for col in row:
@@ -469,16 +370,8 @@ def ai():
     updateAIBoard()
     shiftX, shiftY = 0, 0
 
-    # board cutter, not usefull yet
+    # we call the board cutter only if the board is too big (more than 40x40)
     aiBoard, shiftX, shiftY = boardCutter()
-
-    # print("after")
-    # for row in aiBoard:
-    #     for value in row:
-    #         print(value, end="")
-    #     print("")
-    # print("----")
-
 
     # FIRST PART
     # this part will try to solve the actual state by checking one case at a time
@@ -558,6 +451,7 @@ def ai():
     if not done:
         patternRecognition=pattern.patternFinder(aiBoard)
         if patternRecognition!=None:
+            patternRate.append(patternRecognition[2])
             if patternRecognition[0]=="safe":
                 for coords in patternRecognition[1]:
                     clickCase(coords[1]+shiftX, coords[0]+shiftY)
@@ -577,8 +471,7 @@ def ai():
         boardReduced=copy.deepcopy(pattern.boardReducer(copy.deepcopy(aiBoard)))
         patternRecognition=pattern.patternFinder(boardReduced)
         if patternRecognition!=None:
-            #print("pattern reduit trouvé : ", end="") #to debug the pattern reducing strat
-            #print("coords are : ", patternRecognition)
+            patternRate.append(patternRecognition[2])
             if patternRecognition[0]=="safe":
                 for coords in patternRecognition[1]:
                     clickCase(coords[1]+shiftX, coords[0]+shiftY)
@@ -682,6 +575,10 @@ def ai():
     else:
         window.after(AISPEED, ai)
    
+
+
+# AI START | WINDOW LOOP
+
 startTime=time.time()
 
 startAI()
@@ -691,13 +588,13 @@ window.mainloop()
 endTime=time.time()
 
 #---------------------------------------
-# statistics part, printed on window exit
+# STATISTIC PART | printed on window exit
 
 # patternFinder
 print("\n------------------")
 print("patterFinder stats")
 for name, p in pattern.patternList.items():
-    print(f"{name:<10}{pattern.patternRate.count(name):<20}")
+    print(f"{name:<10}{patternRate.count(name):<20}")
 print("------------------\n")
 
 # win/loose 
@@ -706,6 +603,7 @@ b="Total defeats :   "
 print(f"{a:<15}{victory:<20}")
 print(f"{b:<15}{defeat:<20}")
 
+#probability clicks
 print("number of rng clicks that caused a defeat is : ", rngCount, " / ", rngCountTotal, "\n")
 
 # average score (nomber on unflagged bombs)

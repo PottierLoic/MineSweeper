@@ -1,0 +1,16 @@
+# constants for minesweeper   
+# Author : Loïc Pottier
+# Creation date : 10/01/2022
+
+# CONSTANTS
+BACKGROUND_COLOR = "#E0E0E0"
+WIN_COLOR = "#00FF00"
+LOOSE_COLOR = "#FF0000"
+
+MINE_AMOUNT=80
+
+HEIGHT=20
+WIDTH=20
+
+SQUARE_SIZE=30
+BORDER_SIZE=10
