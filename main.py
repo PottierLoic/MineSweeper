@@ -8,15 +8,16 @@ from tkinter import *
 from PIL import Image, ImageTk
 import random
 import pattern #pattern.py file of this projet, used to store all patterns and their unique solution
+import time # used to test efficacity
 
 # CONSTANTS
 BACKGROUND_COLOR = "#E0E0E0"
 WIN_COLOR = "#00FF00"
 LOOSE_COLOR = "#FF0000"
-MINE_AMOUNT=40
-HEIGHT=16
-WIDTH=16
-SQUARE_SIZE=30
+MINE_AMOUNT=50
+HEIGHT=20
+WIDTH=20
+SQUARE_SIZE=2
 BORDER_SIZE=10
 
 # main board class
@@ -25,15 +26,18 @@ class Board():
     def __init__(self):
         self.board=[]
         self.supBoard=[]
+        self.oldBoard=[]
         self.finished=False
 
         # Creation and filling of the main and real board with 0
         for i in range(HEIGHT):
             self.board.append([])
             self.supBoard.append([])
+            self.oldBoard.append([])
             for j in range(WIDTH):
                 self.board[i].append(0)
                 self.supBoard[i].append(0)
+                self.oldBoard[i].append("!")
 
 
         # random placement of bombs
@@ -91,6 +95,7 @@ class Board():
                     if 0<=y+dy<HEIGHT and 0<=x+dx<WIDTH:
                         if self.supBoard[y+dy][x+dx]==0:
                             toCheck.append([y+dy, x+dx])
+
             for coords in toCheck:
                 if 0<=coords[0]<HEIGHT and 0<=coords[1]<WIDTH:
                     self.supBoard[coords[0]][coords[1]]=1
@@ -110,7 +115,7 @@ class Board():
         return r
 
 # called by tk when the left click is used
-# it change the case to either discovered if it was unknown
+# it change the case to discovered if it was unknown
 # or to unknown if it was flagged
 def leftClick(e):
     x, y = e.x-BORDER_SIZE, e.y-BORDER_SIZE
@@ -131,7 +136,7 @@ def leftClick(e):
         reset()
 
 # called by tk when the right click is used
-# it change the case to either flagged if it was unknown
+# it change the case to flagged if it was unknown
 # or to unknown if it was flagged
 def rightClick(e):
     x, y = e.x-BORDER_SIZE, e.y-BORDER_SIZE
@@ -164,18 +169,20 @@ def updateMineNumber():
 
 # clear the main canvas and recreate all the graphics with the actual values
 def graphics():
-    canvas.delete("all")
     for y in range(HEIGHT):
         for x in range(WIDTH):
-            if b.supBoard[y][x]==1:
-                if b.board[y][x]=="x":
-                    canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=bombImage, tag="case")
+            if b.oldBoard[y][x]!=b.supBoard[y][x]:
+                canvas.delete(str(x)+" "+str(y))
+                if b.supBoard[y][x]==1:
+                    if b.board[y][x]=="x":
+                        canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=bombImage, tag=("case", str(x)+" "+str(y)))
+                    else:
+                        canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=NUMBERS[b.board[y][x]], tag=("case", str(x)+" "+str(y)))
+                elif b.supBoard[y][x]==0:
+                    canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=hiddenImage, activeimage=overImage, tag=("case", str(x)+" "+str(y))) 
                 else:
-                    canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=NUMBERS[b.board[y][x]], tag="case")
-            elif b.supBoard[y][x]==0:
-                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=hiddenImage, activeimage=overImage, tag="case")
-            else:
-                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=flagImage, tag="case")
+                    canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=flagImage, tag=("case", str(x)+" "+str(y)))
+    b.oldBoard=copy.deepcopy(b.supBoard)
     updateMineNumber()
 
 # Destroy every graphics elements and add a loose text in canvas
@@ -334,6 +341,95 @@ def updateAIBoard():
             else:
                 aiBoard[y][x]="*"
 
+# remove fully discovered or unknown parts and return the new board and x, y starting pos
+# we need them to fil the gap between the ai board and the cutted board
+# not sure if it works well, toook 900sec vs 806 sec without for 200 games
+def boardCutter():
+    xStart=0
+    yStart=0
+    newBoard=[]
+
+    # print("before")
+    # printAIBoard()
+
+    # get the highest line we need to add
+    for row in range(len(aiBoard)):
+        if aiBoard[row].count("*")==len(aiBoard[row]):
+            yStart=row
+        else:
+            break
+
+    yEnd=len(aiBoard)-1
+    # do the same but starting from the end, and find the ending line
+    for row in range(len(aiBoard)-1, 0, -1):
+        if aiBoard[row].count("*")==len(aiBoard[row]):
+            yEnd=row
+        else:
+            break
+
+    # in case board don't have fully unknown part, we try to remove fully discovered lines
+
+    # removing discovered part cause basic click error, need to work on it
+
+    if yStart==0:
+        for row in range(len(aiBoard)):
+            valid=True
+            for value in aiBoard[row]:
+                if value=="*":
+                    valid=False
+                    break
+            if valid:
+                yStart=row
+            else:
+                break
+
+    # same but starting from the end
+    if yEnd==len(aiBoard)-1:
+        for row in range(len(aiBoard)-1, 0, -1):
+            valid=True
+            for value in aiBoard[row]:
+                if value=="*":
+                    valid=False
+                    break
+            if valid:
+                yEnd=row
+            else:
+                break
+
+    # get the highest collum we need to add
+    for value in range(len(aiBoard[0])):
+        valid=True
+        for row in range(len(aiBoard)):
+            if aiBoard[row][value]!="*":
+                valid=False
+                break
+        if valid:
+            xStart=value
+        else:
+            break
+
+    xEnd=len(aiBoard[0])-1
+    # do the same but starting from the end to find the ending value
+    for value in range(len(aiBoard[0])-1, 0, -1):
+        valid=True
+        for row in range(len(aiBoard)):
+            if aiBoard[row][value]!="*":
+                valid=False
+                break
+        if valid:
+            xEnd=value
+        else:
+            break
+    
+    # add all the lines between yStart and xEnd and only values between xStart and xEnd
+    for row in range(yStart, yEnd+1):
+        newBoard.append(aiBoard[row][xStart:xEnd+1])
+
+    if len(newBoard)<6 or len(newBoard[0])<6:
+        return aiBoard, 0, 0
+    else:
+        return newBoard, xStart, yStart
+
 # print the aiBoard in cli, used for debug, i leave it here
 def printAIBoard():
     for row in aiBoard:
@@ -365,13 +461,25 @@ def flagCase(posx, posy):
 # left click on the case specified in parameters --> discover the case
 def clickCase(posx, posy):
     canvas.event_generate('<Button-1>', x=posx*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=posy*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+
 lastAction=[]
 # main ai
 def ai():
-    updateAIBoard()
-
     global rngCount, rngCountTotal
-    
+    updateAIBoard()
+    shiftX, shiftY = 0, 0
+
+    # board cutter, not usefull yet
+    aiBoard, shiftX, shiftY = boardCutter()
+
+    # print("after")
+    # for row in aiBoard:
+    #     for value in row:
+    #         print(value, end="")
+    #     print("")
+    # print("----")
+
+
     # FIRST PART
     # this part will try to solve the actual state by checking one case at a time
     # it will no take into account the others numbers around it
@@ -384,7 +492,7 @@ def ai():
                 valid=False
                 for dy in range(-1, 2):
                     for dx in range(-1, 2):
-                        if 0<=y+dy<HEIGHT and 0<=x+dx<WIDTH:
+                        if 0<=y+dy<len(aiBoard) and 0<=x+dx<len(aiBoard[0]):
                             if aiBoard[y+dy][x+dx]=="*":
                                 valid=True
                 if valid:
@@ -408,7 +516,7 @@ def ai():
             flagged=0
             # we get the number of flagged and unknown cases in the precedent list
             for coords in localToCheck:
-                if 0<=coords[0]<HEIGHT and 0<=coords[1]<WIDTH:
+                if 0<=coords[0]<len(aiBoard) and 0<=coords[1]<len(aiBoard[0]):
                     if aiBoard[coords[0]][coords[1]]=="*":
                         unknown+=1
                         unknownList.append([coords[0], coords[1]])
@@ -420,18 +528,16 @@ def ai():
                 # it means that all the bombs are found, so we can click on every unknown cas
                 if flagged==aiBoard[case[0]][case[1]]:
                     for unknownCase in unknownList:
-                        clickCase(unknownCase[1], unknownCase[0])
-                        lastAction.append("basic click : clicked on : "+str(unknownCase[1])+" "+str(unknownCase[0])) # to debug basic click error (when around case match the number of a case)
-                        #print("click")
+                        clickCase(unknownCase[1]+shiftX, unknownCase[0]+shiftY)
+                        lastAction.append("basic click : clicked on : "+str(unknownCase[1]+shiftX)+" "+str(unknownCase[0]+shiftY)) # to debug basic click error (when around case match the number of a case)
                     done=True
                             
                 # if the number of unknown cases around is equal to the number on the actual case - flags around
                 # we can juste flag every unknown case because there is 0% chance for them to be a bomb
                 elif unknown==aiBoard[case[0]][case[1]]-flagged:
                     for unknownCase in unknownList:
-                        flagCase(unknownCase[1], unknownCase[0])
-                        lastAction.append("basic flag : flagged : "+str(unknownCase[1])+" "+str(unknownCase[0])) # to debug basic flag error (when around case match the number of a case)
-                        #print("flag")
+                        flagCase(unknownCase[1]+shiftX, unknownCase[0]+shiftY)
+                        lastAction.append("basic flag : flagged on : "+str(unknownCase[1]+shiftX)+" "+str(unknownCase[0]+shiftY)) # to debug basic flag error (when around case match the number of a case)
                     done=True
 
             #if game is finished, no need to continue
@@ -452,23 +558,20 @@ def ai():
     if not done:
         patternRecognition=pattern.patternFinder(aiBoard)
         if patternRecognition!=None:
-            #print(patternRecognition)
             if patternRecognition[0]=="safe":
                 for coords in patternRecognition[1]:
-                    clickCase(coords[1], coords[0])
+                    clickCase(coords[1]+shiftX, coords[0]+shiftY)
                     lastAction.append("pattern : clicked on : "+str(coords[1])+", "+str(coords[0])) #to debug pattern errors
-                    #print("patter click")
             else:
                 for coords in patternRecognition[1]:
-                    flagCase(coords[1], coords[0])
-                    lastAction.append("pattern : flagged on : "+str(coords[1])+", "+str(coords[0])) #to debug pattern errors
-                    #print("patter flag")
+                    flagCase(coords[1]+shiftX, coords[0]+shiftY)
+                    lastAction.append("pattern : flagged on : "+str(coords[1]+shiftX)+", "+str(coords[0]+shiftY)) #to debug pattern errors
             done=True
 
     # THIRD PART
     # pattern reduction part
     # this part will reduce the board numbers by using the boardReducer function form pattern.py
-    # it will substract the number of bombs around a number to its value and remove the bombs at the end
+    # it will substract the number of bombs around a number from its value and remove the bombs at the end
     # so we don't have to implement every possibiliy in the pattern section
     if not done:
         boardReduced=copy.deepcopy(pattern.boardReducer(copy.deepcopy(aiBoard)))
@@ -478,15 +581,12 @@ def ai():
             #print("coords are : ", patternRecognition)
             if patternRecognition[0]=="safe":
                 for coords in patternRecognition[1]:
-                    clickCase(coords[1], coords[0])
+                    clickCase(coords[1]+shiftX, coords[0]+shiftY)
                     lastAction.append("reduced pattern : clicked on : "+str(coords[1])+", "+str(coords[0])) #to debug reduced pattern errors
-                    #print("reduced pattern click")
-
             else:
                 for coords in patternRecognition[1]:
-                    flagCase(coords[1], coords[0])
-                    lastAction.append("reduced pattern : flagged on : "+str(coords[1])+", "+str(coords[0])) #to debug reduced pattern errors
-                    #print("reduced pattern click")
+                    flagCase(coords[1]+shiftX, coords[0]+shiftY)
+                    lastAction.append("reduced pattern : flagged on : "+str(coords[1]+shiftX)+", "+str(coords[0]+shiftY)) #to debug reduced pattern errors
             done=True
 
    # FOURTH PART
@@ -495,9 +595,9 @@ def ai():
    # it will then click on the case with the lowest probability
     if not done:
         probBoard=[]
-        for i in range(HEIGHT):
+        for i in range(len(aiBoard)):
             probBoard.append([])
-            for j in range(WIDTH):
+            for j in range(len(aiBoard[0])):
                 probBoard[i].append([])
 
         for y in range(len(aiBoard)):
@@ -508,7 +608,7 @@ def ai():
                     flagged=0
                     for dy in range(-1, 2):
                         for dx in range(-1, 2):
-                            if 0<=y+dy<HEIGHT and 0<=x+dx<WIDTH:
+                            if 0<=y+dy<len(aiBoard) and 0<=x+dx<len(aiBoard[0]):
                                 if aiBoard[y+dy][x+dx]=="*":
                                     localUnknown.append((y+dy, x+dx))
                                     valid=True
@@ -527,7 +627,8 @@ def ai():
                     probBoard[y][x]=sum(probBoard[y][x])/len(probBoard[y][x])
                 else:
                     probBoard[y][x]=0
-        
+    
+        # and get min value
         min=100
         probx=-1
         proby=-1
@@ -538,9 +639,11 @@ def ai():
                     probx=x
                     proby=y
 
-        # if no position found, we click on a random unknown case
+        # we click on the square with the lowest probability
         if probx!=-1 and proby!=-1:
-            canvas.event_generate('<Button-1>', x=probx*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=proby*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+            probx+=shiftX
+            proby+=shiftY
+            clickCase(probx, proby)
             done=True
             lastAction.append("prob : clicked on : "+str(probx)+", "+str(proby)) #to debug
             rngCountTotal+=1
@@ -548,17 +651,17 @@ def ai():
                 rngCount+=1
     
     # LAST PART
-    # If the last cases have non numbers around them, we can juste try a random click
+    # If the last squares have no numbers around them, we can just try a random click
     # that a pretty rare case, but it can happen
     if not done:
         unknownList=[]
-        for row in range(HEIGHT):
-            for col in range(WIDTH):
+        for row in range(len(aiBoard)):
+            for col in range(len(aiBoard[0])):
                 if aiBoard[row][col]=="*":
                     unknownList.append([row, col])
         if len(unknownList)!=0:
             rd=random.choice(unknownList)
-            canvas.event_generate('<Button-1>', x=rd[1]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2, y=rd[0]*SQUARE_SIZE+BORDER_SIZE+SQUARE_SIZE/2)
+            clickCase(rd[1], rd[0])
             lastAction.append("rng : clicked on : "+str(rd[1])+", "+str(rd[0])) #to debug
 
     # If ai fail, reset here to gain time on the loops
@@ -579,9 +682,13 @@ def ai():
     else:
         window.after(AISPEED, ai)
    
+startTime=time.time()
+
 startAI()
 
 window.mainloop()
+
+endTime=time.time()
 
 #---------------------------------------
 # statistics part, printed on window exit
@@ -603,9 +710,12 @@ print("number of rng clicks that caused a defeat is : ", rngCount, " / ", rngCou
 
 # average score (nomber on unflagged bombs)
 avg=0
-for i in scores:
-    avg+=i
-avg/=len(scores)
-print("average score of this session is : ", avg, "\n")
-print("wich mean that ", 100-round((avg/MINE_AMOUNT)*100, 2), "% of bombs have been found")
+if scores!=[]:
+    for i in scores:
+        avg+=i
+    avg/=len(scores)
+    print("average score of this session is : ", avg, "\n")
+    print("wich mean that ", round(100-(avg/MINE_AMOUNT)*100, 2), "% of bombs have been found")
+
+print("duration of this session is : ", endTime-startTime)
 

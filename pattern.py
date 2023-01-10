@@ -5,7 +5,6 @@
 # IMPORTS
 import copy
 
-
 # the patterList dictionnary contain patterns that the ai can use in its patterRecognition part
 # the dict contains multiples dictionnaries that each have 3 items : pattern, bomb position and safe position
 
@@ -422,6 +421,7 @@ patternList={
 
 }
 
+# used to turn pattern by 90°, just to create them faster, not used by other functions
 def rotatePattern(pattern):
     newPattern=[]
     for i in range(len(pattern[0])):
@@ -432,6 +432,7 @@ def rotatePattern(pattern):
     newPattern.reverse()
     return newPattern
 
+# same as rotate
 def reversePattern(pattern):
     newPattern=[]
     for i in range(len(pattern)):
@@ -442,23 +443,8 @@ def reversePattern(pattern):
     newPattern.reverse()
     return newPattern
 
-# pattern = patternList.get("H2").get("pattern")
 
-# pattern=reversePattern(pattern)
-# print(pattern)
-
-# reversed=rotatePattern(pattern)
-# print(reversed)
-
-# reversed=rotatePattern(reversed)
-# print(reversed)
-
-# reversed=rotatePattern(reversed)
-# print(reversed)
-
-
-
-# this function add a border of "!" to the board, so we can check for patters even if we are in y or x = 0
+# this function add a border of "!" to the board, so we can check for patters even if we are in y or x == 0
 def boardTranslator(board):
     newBoard=copy.deepcopy(board)
     lenght=len(board[0])
@@ -504,7 +490,7 @@ def patternFinder(board):
 
                     if found:
                         y, x = row-1, col-1
-                        #print("found ", name, " in ", y, x)
+                        print("found ", name, " in ", y, x)
                         end=True
                         break
 
@@ -529,7 +515,6 @@ def patternFinder(board):
 
 # this function work BUT this is not a good solution, we can't use all patterns with this
 # boardReducer substract to all numbers with unknown tiles around the number of flags around them
-# this is the third solution if the basic solution and pattern finding didn't work
 def boardReducer(board):
     newBoard=[]
     for y in range(len(board)):
