@@ -33,7 +33,8 @@ import json
 with open('patternList.json') as pattern:
     patternList = json.load(pattern)
 
-
+with open('patternListTest.json') as pattern:
+    patternListTest = json.load(pattern)
 
 # this function add a border of "!" to the board, so we can check for patters even if we are in y or x == 0
 def boardTranslator(board):
@@ -103,12 +104,12 @@ def patternFinder(board):
 # not working well
 def patternFinderTest(board):
     board=boardTranslator(board)
-    for name, p in patternList.items():
+    for name, p in patternListTest.items():
         pattern=p.get("pattern")
         bombsList=p.get("bombPos")
         safeList=p.get("safePos")
-        yrange=len(board)-len(pattern)
-        xrange=len(board[0])-len(pattern[0])
+        yrange=len(board)-len(pattern)+1
+        xrange=len(board[0])-len(pattern[0])+1
         found=True
         end=False
         x, y = 0, 0
@@ -116,8 +117,12 @@ def patternFinderTest(board):
             for row in range(yrange):
                 for col in range(xrange):
                     found=True
+                    unknownFound=False
                     for dy in range(len(pattern)):
                         for dx in range(len(pattern[0])):
+                            if pattern[dy][dx]=="?":
+                                if board[row+dy][col+dx]=="*":
+                                    unknownFound=True
                             if pattern[dy][dx]=="*" and found:
                                 if board[row+dy][col+dx]=="~":
                                     found=False
@@ -127,30 +132,30 @@ def patternFinderTest(board):
                             elif found:
                                 if board[row+dy][col+dx]!=pattern[dy][dx]:
                                     found=False
-
                     if found:
-                        validPos=False
-                        
-                        if bombsList!=[]:
-                            for coords in bombsList:
-                                if board[coords[0]+row][coords[1]+col]=="*":
-                                    validPos=True
-                        if safeList!=[]:
-                            for coords in safeList:
-                                if board[coords[0]+row][coords[1]+col]=="*":
-                                    validPos=True
+                        if unknownFound:
+                            validPos=False
+                            if bombsList!=[]:
+                                for coords in bombsList:
+                                    if board[coords[0]+row][coords[1]+col]=="*":
+                                        validPos=True
+                            if safeList!=[]:
+                                for coords in safeList:
+                                    if board[coords[0]+row][coords[1]+col]=="*":
+                                        validPos=True
 
-                        if validPos:
-                            print("found ",name, " on ", col, row)
-                            y, x = row-1, col-1
-                            end=True
-                            break
-                        else:
-                            found=False
+                            if validPos:
+                                print("found ",name, " on ", col, row)
+                                y, x = row-1, col-1
+                                end=True
+                                break
+                            else:
+                                found=False
 
                 if found:
                     break
-   
+            if found:
+                break
         if found:
             returnList=[]
             if bombsList!=[]:
@@ -162,11 +167,6 @@ def patternFinderTest(board):
                 for i in range(len(safeList)):
                     returnList.append([safeList[i][0]+y, safeList[i][1]+x])
                 return ["safe", returnList, name]
-
-
-
-
-
 
 # this function work BUT this is not a good solution, we can't use all patterns with this
 # boardReducer substract to all numbers with unknown tiles around the number of flags around them

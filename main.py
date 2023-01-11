@@ -71,19 +71,32 @@ def updateMineNumber():
 
 # clear the main canvas and recreate all the graphics with the actual values
 def graphics():
+    print(b.finished)
     for y in range(HEIGHT):
         for x in range(WIDTH):
-            if b.oldBoard[y][x]!=b.supBoard[y][x]:
+            if b.oldBoard[y][x]!=b.supBoard[y][x] or b.board[y][x]=="x" and b.finished:
                 canvas.delete(str(x)+" "+str(y))
-                if b.supBoard[y][x]==1:
-                    if b.board[y][x]=="x":
-                        canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=bombImage, tag=("case", str(x)+" "+str(y)))
+                if b.finished:
+                    if b.supBoard[y][x]==1:
+                        if b.board[y][x]=="x":
+                            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=looseImage, tag=("case", str(x)+" "+str(y)))
+                        else:
+                            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=NUMBERS[b.board[y][x]], tag=("case", str(x)+" "+str(y)))
                     else:
-                        canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=NUMBERS[b.board[y][x]], tag=("case", str(x)+" "+str(y)))
-                elif b.supBoard[y][x]==0:
-                    canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=hiddenImage, activeimage=overImage, tag=("case", str(x)+" "+str(y))) 
+                        if b.board[y][x]=="x":
+                            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=looseImage, tag=("case", str(x)+" "+str(y)))
+                        else:
+                            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=hiddenImage, tag=("case", str(x)+" "+str(y))) 
                 else:
-                    canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=flagImage, tag=("case", str(x)+" "+str(y)))
+                    if b.supBoard[y][x]==1:
+                        if b.board[y][x]=="x":
+                            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=bombImage, tag=("case", str(x)+" "+str(y)))
+                        else:
+                            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=NUMBERS[b.board[y][x]], tag=("case", str(x)+" "+str(y)))
+                    elif b.supBoard[y][x]==0:
+                        canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=hiddenImage, tag=("case", str(x)+" "+str(y))) 
+                    else:
+                        canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=flagImage, tag=("case", str(x)+" "+str(y)))
     b.oldBoard=copy.deepcopy(b.supBoard)
     updateMineNumber()
 
@@ -91,11 +104,13 @@ def graphics():
 def loose():
     global defeat, defeatText
     b.finished=True
+    graphics()
     canvas.config(bg=LOOSE_COLOR)
     label.config(text="RATIOOO")
     defeat +=1
     defeatText="Defeat : "+str(defeat)
     defeatLabel.config(text=defeatText)
+    
 
 # Destroy every graphics elements and add a win text in canvas
 def win():
@@ -156,6 +171,7 @@ scores=[]
 rngCount=0
 rngCountTotal=0
 patternRate=[]
+firstCall=True
 
 #------------------------------------------------------------------------
 # IA PART
@@ -317,10 +333,12 @@ def boardCutter():
 # this click can only be done on an empty case
 # see the discoverFirstCase function comment for more info
 def startAI():
+    global firstCall
     if AI_ON:
         initAIBoard()
         updateAIBoard()
         discoverFirstCase()
+        firstCall=True
         window.after(AISPEED, ai)
 
 # empty function that we call in the window.after line
@@ -339,14 +357,18 @@ def clickCase(posx, posy):
 lastAction=[]
 # main ai
 def ai():
-    global rngCount, rngCountTotal
+    global rngCount, rngCountTotal, firstCall
     aiBoard=updateAIBoard()
     needStop=False
 
     shiftX, shiftY = 0, 0
-    aiBoard, shiftX, shiftY = boardCutter()
-    printBoard(aiBoard)
 
+    # if not firstCall:
+    #     aiBoard, shiftX, shiftY = boardCutter()
+    # else:
+    #     firstCall=False
+
+    printBoard(aiBoard)
 
     # FIRST PART
     # this part will try to solve the actual state by checking one case at a time
@@ -610,12 +632,14 @@ if __name__=="__main__":
                 ImageTk.PhotoImage(Image.open("img/7.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
                 ImageTk.PhotoImage(Image.open("img/8.png").resize((SQUARE_SIZE, SQUARE_SIZE))),]
 
-    overImage=ImageTk.PhotoImage(Image.open("img/over.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
     bombImage=ImageTk.PhotoImage(Image.open("img/bomb.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
+    looseImage=ImageTk.PhotoImage(Image.open("img/loose.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
     hiddenImage=ImageTk.PhotoImage(Image.open("img/hidden.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
     flagImage=ImageTk.PhotoImage(Image.open("img/flag.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
 
     graphics()
+    discoverFirstCase()
+
 
     startTime=time.time()
 
