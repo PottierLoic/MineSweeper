@@ -33,27 +33,6 @@ import json
 with open('patternList.json') as pattern:
     patternList = json.load(pattern)
 
-# used to turn pattern by 90°, just to create them faster, not used by other functions
-def rotatePattern(pattern):
-    newPattern=[]
-    for i in range(len(pattern[0])):
-        newPattern.append([])
-    for i in range(len(pattern[0])):
-        for j in range(len(pattern)):
-            newPattern[i].append(pattern[j][i])
-    newPattern.reverse()
-    return newPattern
-
-# same as rotate
-def reversePattern(pattern):
-    newPattern=[]
-    for i in range(len(pattern)):
-        newPattern.append([])
-    for i in range(len(pattern)):
-        for j in range(len(pattern[0])):
-            newPattern[i].append(pattern[i][j])
-    newPattern.reverse()
-    return newPattern
 
 
 # this function add a border of "!" to the board, so we can check for patters even if we are in y or x == 0
@@ -101,6 +80,7 @@ def patternFinder(board):
                                     found=False
 
                     if found:
+                        print("found ",name, " on ", col, row)
                         y, x = row-1, col-1
                         end=True
                         break
@@ -110,7 +90,6 @@ def patternFinder(board):
    
         if found:
             returnList=[]
-
             if bombsList!=[]:
                 for i in range(len(bombsList)):
                     returnList.append([bombsList[i][0]+y, bombsList[i][1]+x])
@@ -119,8 +98,75 @@ def patternFinder(board):
             if safeList!=[]:
                 for i in range(len(safeList)):
                     returnList.append([safeList[i][0]+y, safeList[i][1]+x])
-
                 return ["safe", returnList, name]
+
+# not working well
+def patternFinderTest(board):
+    board=boardTranslator(board)
+    for name, p in patternList.items():
+        pattern=p.get("pattern")
+        bombsList=p.get("bombPos")
+        safeList=p.get("safePos")
+        yrange=len(board)-len(pattern)
+        xrange=len(board[0])-len(pattern[0])
+        found=True
+        end=False
+        x, y = 0, 0
+        if not end:
+            for row in range(yrange):
+                for col in range(xrange):
+                    found=True
+                    for dy in range(len(pattern)):
+                        for dx in range(len(pattern[0])):
+                            if pattern[dy][dx]=="*" and found:
+                                if board[row+dy][col+dx]=="~":
+                                    found=False
+                            elif pattern[dy][dx]=="!" and found:
+                                if board[row+dy][col+dx] in ("*", "~"):
+                                    found=False
+                            elif found:
+                                if board[row+dy][col+dx]!=pattern[dy][dx]:
+                                    found=False
+
+                    if found:
+                        validPos=False
+                        
+                        if bombsList!=[]:
+                            for coords in bombsList:
+                                if board[coords[0]+row][coords[1]+col]=="*":
+                                    validPos=True
+                        if safeList!=[]:
+                            for coords in safeList:
+                                if board[coords[0]+row][coords[1]+col]=="*":
+                                    validPos=True
+
+                        if validPos:
+                            print("found ",name, " on ", col, row)
+                            y, x = row-1, col-1
+                            end=True
+                            break
+                        else:
+                            found=False
+
+                if found:
+                    break
+   
+        if found:
+            returnList=[]
+            if bombsList!=[]:
+                for i in range(len(bombsList)):
+                    returnList.append([bombsList[i][0]+y, bombsList[i][1]+x])
+                return ["bomb", returnList, name]
+
+            if safeList!=[]:
+                for i in range(len(safeList)):
+                    returnList.append([safeList[i][0]+y, safeList[i][1]+x])
+                return ["safe", returnList, name]
+
+
+
+
+
 
 # this function work BUT this is not a good solution, we can't use all patterns with this
 # boardReducer substract to all numbers with unknown tiles around the number of flags around them
@@ -157,4 +203,25 @@ def boardReducer(board):
     return newBoard
                 
 
+# used to turn pattern by 90°, just to create them faster, not used by other functions
+def rotatePattern(pattern):
+    newPattern=[]
+    for i in range(len(pattern[0])):
+        newPattern.append([])
+    for i in range(len(pattern[0])):
+        for j in range(len(pattern)):
+            newPattern[i].append(pattern[j][i])
+    newPattern.reverse()
+    return newPattern
+
+# same as rotate
+def reversePattern(pattern):
+    newPattern=[]
+    for i in range(len(pattern)):
+        newPattern.append([])
+    for i in range(len(pattern)):
+        for j in range(len(pattern[0])):
+            newPattern[i].append(pattern[i][j])
+    newPattern.reverse()
+    return newPattern
 

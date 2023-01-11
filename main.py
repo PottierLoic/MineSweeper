@@ -145,8 +145,8 @@ def printBoard(b):
     for row in b:
         for col in row:
             print(col, end=" ")
-        print("")
-    print("")
+        print("")  
+    print("")  
 
 # STATS SECTION
 # used at the end of the file 
@@ -157,76 +157,9 @@ rngCount=0
 rngCountTotal=0
 patternRate=[]
 
-# WINDOW AND TKINTER SECTION
-window = Tk()
-window.title("MineSweeper")
-window.resizable(False, False)
-
-label = Label(window, text="MineSweeper", font=("consolas", 10))
-label.pack()
-
-victoryText="Victory : "+str(victory)
-victoryLabel = Label(window, text=victoryText, font=("consolas", 10))
-victoryLabel.pack()
-
-defeatText="Defeats : "+str(defeat)
-defeatLabel = Label(window, text=defeatText, font=("consolas", 10))
-defeatLabel.pack()
-
-remainingMines=MINE_AMOUNT
-minesText="Remaining bombs : "+str(remainingMines)
-minesLabel = Label(window, text=minesText, font=("consolas", 10))
-minesLabel.pack()
-
-canvas = Canvas(window, bg=BACKGROUND_COLOR, height=HEIGHT*SQUARE_SIZE+BORDER_SIZE*2, width=WIDTH*SQUARE_SIZE+BORDER_SIZE*2)
-canvas.pack()
-
-window.update()
-
-windowWidth = window.winfo_width()
-windowHeight = window.winfo_height()
-screenWidth = window.winfo_screenwidth()
-screenHeight = window.winfo_screenheight()
-
-x = int((screenWidth/2) - (windowWidth/2))
-y = int((screenHeight/2) - (windowHeight/2))
-
-window.geometry(f"{windowWidth}x{windowHeight}+{x}+{y}")
-
-b = board.Board()
-
-# KEYBINDS (if you want to play without ai)
-window.bind('<Button-1>', leftClick)
-window.bind('<Button-3>', rightClick)
-
-# Creation of the images, need to put this after the main window declaration
-# because of the window.update() call otherwise the images are not loaded correctly
-NUMBERS=[ImageTk.PhotoImage(Image.open("img/0.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
-             ImageTk.PhotoImage(Image.open("img/1.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
-             ImageTk.PhotoImage(Image.open("img/2.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
-             ImageTk.PhotoImage(Image.open("img/3.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
-             ImageTk.PhotoImage(Image.open("img/4.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
-             ImageTk.PhotoImage(Image.open("img/5.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
-             ImageTk.PhotoImage(Image.open("img/6.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
-             ImageTk.PhotoImage(Image.open("img/7.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
-             ImageTk.PhotoImage(Image.open("img/8.png").resize((SQUARE_SIZE, SQUARE_SIZE))),]
-
-overImage=ImageTk.PhotoImage(Image.open("img/over.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
-bombImage=ImageTk.PhotoImage(Image.open("img/bomb.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
-hiddenImage=ImageTk.PhotoImage(Image.open("img/hidden.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
-flagImage=ImageTk.PhotoImage(Image.open("img/flag.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
-
-graphics()
-
 #------------------------------------------------------------------------
 # IA PART
 #------------------------------------------------------------------------
-
-# set this to false to desactivate AI and play yourself
-AI_ON = True
-
-# the lower the speed is, the faster the ia is, it represent the time waited between every action, so the tkinter interface can follow
-AISPEED=1
 
 # creating the board that the ai will analyze
 aiBoard=[]
@@ -253,64 +186,66 @@ def updateAIBoard():
                 aiBoard[y][x]="~"
             else:
                 aiBoard[y][x]="*"
+    return aiBoard
 
 # remove fully discovered or unknown parts and return the new board and x, y starting pos
 # we need them to fil the gap between the ai board and the cutted board
 # not sure if it works well, toook 900sec vs 806 sec without for 200 games
 def boardCutter():
     xStart=0
-    yStart=0
     newBoard=[]
 
-    # get the highest line we need to add
+    # find the starting line
+    yStart=0
     for row in range(len(aiBoard)):
         if aiBoard[row].count("*")==len(aiBoard[row]):
             yStart=row
         else:
             break
 
-    yEnd=len(aiBoard)-1
     # do the same but starting from the end, and find the ending line
+    yEnd=len(aiBoard)-1
     for row in range(len(aiBoard)-1, 0, -1):
         if aiBoard[row].count("*")==len(aiBoard[row]):
             yEnd=row
         else:
             break
 
-    # in case board don't have fully unknown part, we try to remove fully discovered lines
-    # removing discovered part cause basic click error, need to work on it
+    # if we removed nothing, we search for fully discovered parts
     if yStart==0:
         for row in range(len(aiBoard)):
             valid=True
             for value in aiBoard[row]:
-                if value=="*":
+                if value=="*" and valid:
                     valid=False
-                    break
+
             if valid:
                 yStart=row
             else:
                 break
+
+        if yStart!=0:
+            yStart-=1
 
     # same but starting from the end
     if yEnd==len(aiBoard)-1:
         for row in range(len(aiBoard)-1, 0, -1):
             valid=True
             for value in aiBoard[row]:
-                if value=="*":
+                if value=="*" and valid:
                     valid=False
-                    break
             if valid:
                 yEnd=row
             else:
                 break
 
-    # get the highest collum we need to add
+    # x part here
+    # find the starting collumn
     for value in range(len(aiBoard[0])):
         valid=True
         for row in range(len(aiBoard)):
-            if aiBoard[row][value]!="*":
+            if aiBoard[row][value]!="*" and valid:
                 valid=False
-                break
         if valid:
             xStart=value
         else:
@@ -321,48 +256,61 @@ def boardCutter():
     for value in range(len(aiBoard[0])-1, 0, -1):
         valid=True
         for row in range(len(aiBoard)):
-            if aiBoard[row][value]!="*":
+            if aiBoard[row][value]!="*" and valid:
                 valid=False
-                break
         if valid:
             xEnd=value
         else:
             break
+
 
     # if we can't remove unknown part, we try to remove discovered part
-    # get the highest collum we need to add
-    for value in range(len(aiBoard[0])):
-        valid=True
-        for row in range(len(aiBoard)):
-            if aiBoard[row][value]=="*":
-                valid=False
+    # get the starting collumn
+    if xStart==0:
+        for value in range(len(aiBoard[0])):
+            valid=True
+            for row in range(len(aiBoard)):
+                if aiBoard[row][value]=="*" and valid:
+                    valid=False
+            if valid:
+                xStart=value
+            else:
                 break
-        if valid:
-            xStart=value
-        else:
-            break
 
-    xEnd=len(aiBoard[0])-1
+        if xStart!=0:
+            xStart-=1
+
     # do the same but starting from the end to find the ending value
-    for value in range(len(aiBoard[0])-1, 0, -1):
-        valid=True
-        for row in range(len(aiBoard)):
-            if aiBoard[row][value]=="*":
-                valid=False
+    if xEnd==len(aiBoard[0])-1:
+        for value in range(len(aiBoard[0])-1, 0, -1):
+            valid=True
+            for row in range(len(aiBoard)):
+                if aiBoard[row][value]=="*" and valid:
+                    valid=False
+            if valid:
+                xEnd=value
+            else:
                 break
-        if valid:
-            xEnd=value
+
+    while xEnd-xStart<5:
+        if xStart!=0:
+            xStart-=1
         else:
-            break
+            xEnd+=1
+        print("x", xEnd, xStart, xEnd-xStart)
+
+    while yEnd-yStart<5:
+        if yStart!=0:
+            yStart-=1
+        else:
+            yEnd+=1
+        print("y", yEnd, yStart, yEnd-yStart)
     
     # add all the lines between yStart and xEnd and only values between xStart and xEnd
     for row in range(yStart, yEnd+1):
         newBoard.append(aiBoard[row][xStart:xEnd+1])
 
-    if len(newBoard)<6 or len(newBoard[0])<6:
-        return aiBoard, 0, 0
-    else:
-        return newBoard, xStart, yStart
+    return newBoard, xStart, yStart
 
 # do the first random click on the board
 # then start the ai function
@@ -392,18 +340,18 @@ lastAction=[]
 # main ai
 def ai():
     global rngCount, rngCountTotal
-    updateAIBoard()
+    aiBoard=updateAIBoard()
+    needStop=False
+
     shiftX, shiftY = 0, 0
-
-    # we call the board cutter only if the board is too big (more than 40x40)
     aiBoard, shiftX, shiftY = boardCutter()
-
     printBoard(aiBoard)
+
+
     # FIRST PART
     # this part will try to solve the actual state by checking one case at a time
     # it will no take into account the others numbers around it
-
-    #put all the cases filled with number other than 0 in a list
+    # put all the cases filled with number other than 0 in a list
     caseToCheck=[]
     for y in range(len(aiBoard)):
         for x in range (len(aiBoard[y])):
@@ -417,7 +365,7 @@ def ai():
                 if valid:
                     caseToCheck.append((y, x))
 
-    #check around cases in caseToCheck if :
+    # check around cases in caseToCheck if :
     # first : there is a number of unknown cases around equal to the number of the case - number of flags around already placed
     #   if yes, call the flagCase function for theses coords
     # second : there is a number of flagged cases around equal to the number of the case
@@ -468,6 +416,7 @@ def ai():
             if b.finished:
                 if b.checkLoose():
                     print("loose on a basic action ! CHECK PATTERNS")
+                    needStop=True
                 break
 
     # SECOND PART
@@ -508,10 +457,10 @@ def ai():
                     lastAction.append("reduced pattern : flagged on : "+str(coords[1]+shiftX)+", "+str(coords[0]+shiftY)) #to debug reduced pattern errors
             done=True
 
-   # FOURTH PART
-   # probability part, to be used in the last part of the game
-   # it will calculate the probability of a case to be a bomb by using the number of bombs around it and the number of unknown cases around it
-   # it will then click on the case with the lowest probability
+    # FOURTH PART
+    # probability part, to be used in the last part of the game
+    # it will calculate the probability of a case to be a bomb by using the number of bombs around it and the number of unknown cases around it
+    # it will then click on the case with the lowest probability
     if not done:
         probBoard=[]
         for i in range(len(aiBoard)):
@@ -595,7 +544,8 @@ def ai():
                 if col==2:
                     nb+=1
         scores.append(MINE_AMOUNT-nb)
-
+        if needStop and STOP_IF_FAIL:
+            quit()
         reset()
         startAI()
     else:
@@ -604,42 +554,102 @@ def ai():
 
 
 # AI START | WINDOW LOOP
+if __name__=="__main__":
 
-startTime=time.time()
+    # WINDOW AND TKINTER SECTION
+    window = Tk()
+    window.title("MineSweeper")
+    window.resizable(False, False)
 
-startAI()
+    label = Label(window, text="MineSweeper", font=("consolas", 10))
+    label.pack()
 
-window.mainloop()
+    victoryText="Victory : "+str(victory)
+    victoryLabel = Label(window, text=victoryText, font=("consolas", 10))
+    victoryLabel.pack()
 
-endTime=time.time()
+    defeatText="Defeats : "+str(defeat)
+    defeatLabel = Label(window, text=defeatText, font=("consolas", 10))
+    defeatLabel.pack()
 
-#---------------------------------------
-# STATISTIC PART | printed on window exit
+    remainingMines=MINE_AMOUNT
+    minesText="Remaining bombs : "+str(remainingMines)
+    minesLabel = Label(window, text=minesText, font=("consolas", 10))
+    minesLabel.pack()
 
-# patternFinder
-print("\n------------------")
-print("patterFinder stats")
-for name, p in pattern.patternList.items():
-    print(f"{name:<10}{patternRate.count(name):<20}")
-print("------------------\n")
+    canvas = Canvas(window, bg=BACKGROUND_COLOR, height=HEIGHT*SQUARE_SIZE+BORDER_SIZE*2, width=WIDTH*SQUARE_SIZE+BORDER_SIZE*2)
+    canvas.pack()
 
-# win/loose 
-a="Total victories : "
-b="Total defeats :   "
-print(f"{a:<15}{victory:<20}")
-print(f"{b:<15}{defeat:<20}")
+    window.update()
 
-#probability clicks
-print("number of rng clicks that caused a defeat is : ", rngCount, " / ", rngCountTotal, "\n")
+    windowWidth = window.winfo_width()
+    windowHeight = window.winfo_height()
+    screenWidth = window.winfo_screenwidth()
+    screenHeight = window.winfo_screenheight()
 
-# average score (nomber on unflagged bombs)
-avg=0
-if scores!=[]:
-    for i in scores:
-        avg+=i
-    avg/=len(scores)
-    print("average score of this session is : ", avg, "\n")
-    print("wich mean that ", round(100-(avg/MINE_AMOUNT)*100, 2), "% of bombs have been found")
+    x = int((screenWidth/2) - (windowWidth/2))
+    y = int((screenHeight/2) - (windowHeight/2))
 
-print("duration of this session is : ", endTime-startTime)
+    window.geometry(f"{windowWidth}x{windowHeight}+{x}+{y}")
+
+    b = board.Board()
+
+    # KEYBINDS (if you want to play without ai)
+    window.bind('<Button-1>', leftClick)
+    window.bind('<Button-3>', rightClick)
+
+    # Creation of the images, need to put this after the main window declaration
+    # because of the window.update() call otherwise the images are not loaded correctly
+    NUMBERS=[ImageTk.PhotoImage(Image.open("img/0.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+                ImageTk.PhotoImage(Image.open("img/1.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+                ImageTk.PhotoImage(Image.open("img/2.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+                ImageTk.PhotoImage(Image.open("img/3.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+                ImageTk.PhotoImage(Image.open("img/4.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+                ImageTk.PhotoImage(Image.open("img/5.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+                ImageTk.PhotoImage(Image.open("img/6.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+                ImageTk.PhotoImage(Image.open("img/7.png").resize((SQUARE_SIZE, SQUARE_SIZE))),
+                ImageTk.PhotoImage(Image.open("img/8.png").resize((SQUARE_SIZE, SQUARE_SIZE))),]
+
+    overImage=ImageTk.PhotoImage(Image.open("img/over.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
+    bombImage=ImageTk.PhotoImage(Image.open("img/bomb.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
+    hiddenImage=ImageTk.PhotoImage(Image.open("img/hidden.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
+    flagImage=ImageTk.PhotoImage(Image.open("img/flag.png").resize((SQUARE_SIZE, SQUARE_SIZE)))
+
+    graphics()
+
+    startTime=time.time()
+
+    startAI()
+
+    window.mainloop()
+
+    endTime=time.time()
+
+    # STATISTIC PART | printed on window exit
+    # patternFinder
+    print("\n------------------")
+    print("patterFinder stats")
+    for name, p in pattern.patternList.items():
+        print(f"{name:<10}{patternRate.count(name):<20}")
+    print("------------------\n")
+
+    # win/loose 
+    a="Total victories : "
+    b="Total defeats :   "
+    print(f"{a:<15}{victory:<20}")
+    print(f"{b:<15}{defeat:<20}")
+
+    #probability clicks
+    print("number of rng clicks that caused a defeat is : ", rngCount, " / ", rngCountTotal, "\n")
+
+    # average score (nomber on unflagged bombs)
+    avg=0
+    if scores!=[]:
+        for i in scores:
+            avg+=i
+        avg/=len(scores)
+        print("average score of this session is : ", avg, "\n")
+        print("wich mean that ", round(100-(avg/MINE_AMOUNT)*100, 2), "% of bombs have been found")
+
+    print("duration of this session is : ", endTime-startTime)
 
