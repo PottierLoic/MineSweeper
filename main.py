@@ -71,34 +71,34 @@ def updateMineNumber():
 
 # clear the main canvas and recreate all the graphics with the actual values
 def graphics():
-    print(b.finished)
-    for y in range(HEIGHT):
-        for x in range(WIDTH):
-            if b.oldBoard[y][x]!=b.supBoard[y][x] or b.board[y][x]=="x" and b.finished:
-                canvas.delete(str(x)+" "+str(y))
-                if b.finished:
-                    if b.supBoard[y][x]==1:
-                        if b.board[y][x]=="x":
-                            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=looseImage, tag=("case", str(x)+" "+str(y)))
+    if UPDATE_GRAPHICS:
+        for y in range(HEIGHT):
+            for x in range(WIDTH):
+                if b.oldBoard[y][x]!=b.supBoard[y][x] or b.board[y][x]=="x" and b.finished:
+                    canvas.delete(str(x)+" "+str(y))
+                    if b.finished:
+                        if b.supBoard[y][x]==1:
+                            if b.board[y][x]=="x":
+                                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=looseImage, tag=("case", str(x)+" "+str(y)))
+                            else:
+                                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=NUMBERS[b.board[y][x]], tag=("case", str(x)+" "+str(y)))
                         else:
-                            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=NUMBERS[b.board[y][x]], tag=("case", str(x)+" "+str(y)))
+                            if b.board[y][x]=="x":
+                                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=looseImage, tag=("case", str(x)+" "+str(y)))
+                            else:
+                                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=hiddenImage, tag=("case", str(x)+" "+str(y))) 
                     else:
-                        if b.board[y][x]=="x":
-                            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=looseImage, tag=("case", str(x)+" "+str(y)))
-                        else:
+                        if b.supBoard[y][x]==1:
+                            if b.board[y][x]=="x":
+                                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=bombImage, tag=("case", str(x)+" "+str(y)))
+                            else:
+                                canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=NUMBERS[b.board[y][x]], tag=("case", str(x)+" "+str(y)))
+                        elif b.supBoard[y][x]==0:
                             canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=hiddenImage, tag=("case", str(x)+" "+str(y))) 
-                else:
-                    if b.supBoard[y][x]==1:
-                        if b.board[y][x]=="x":
-                            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=bombImage, tag=("case", str(x)+" "+str(y)))
                         else:
-                            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=NUMBERS[b.board[y][x]], tag=("case", str(x)+" "+str(y)))
-                    elif b.supBoard[y][x]==0:
-                        canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=hiddenImage, tag=("case", str(x)+" "+str(y))) 
-                    else:
-                        canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=flagImage, tag=("case", str(x)+" "+str(y)))
-    b.oldBoard=copy.deepcopy(b.supBoard)
-    updateMineNumber()
+                            canvas.create_image(x*SQUARE_SIZE + BORDER_SIZE, y*SQUARE_SIZE+BORDER_SIZE, anchor="nw", image=flagImage, tag=("case", str(x)+" "+str(y)))
+        b.oldBoard=copy.deepcopy(b.supBoard)
+        updateMineNumber()
 
 # Destroy every graphics elements and add a loose text in canvas
 def loose():
@@ -531,6 +531,7 @@ def ai():
 
         # we click on the square with the lowest probability
         if probx!=-1 and proby!=-1:
+            print("abcdefghij")
             probx+=shiftX
             proby+=shiftY
             clickCase(probx, proby)
